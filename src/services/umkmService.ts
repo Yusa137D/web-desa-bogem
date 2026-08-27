@@ -168,71 +168,33 @@ export async function updateUMKM(
 
     localStorage.setItem("local_umkm_items", JSON.stringify(updated));
 
-    // Also update Supabase if numeric/uuid ID
-    if (
-      typeof id === "number" ||
-      (!isNaN(Number(id)) &&
-        !String(id).startsWith("local-") &&
-        !String(id).startsWith("demo-"))
-    ) {
-      const { error } = await supabase
-        .from("umkm")
-        .update({
-          nama_usaha: input.nama_usaha,
-          pemilik: input.pemilik,
-          deskripsi: input.deskripsi,
-          kategori: input.kategori,
-          kontak: input.kontak,
-          alamat: input.alamat,
-          harga: input.harga,
-          gambar: input.gambar,
-        })
-        .eq("id", id);
+    const isRealDbId = typeof id === "number" || (!String(id).startsWith("local-") && !String(id).startsWith("demo-"));
 
+    const payload: any = {
+      nama_usaha: input.nama_usaha,
+      pemilik: input.pemilik,
+      deskripsi: input.deskripsi,
+      kategori: input.kategori,
+      kontak: input.kontak,
+      alamat: input.alamat !== undefined ? input.alamat : null,
+      harga: input.harga,
+    };
+    if (input.gambar !== undefined) {
+      payload.gambar = input.gambar;
+    }
+
+    if (isRealDbId) {
+      const { error } = await supabase.from("umkm").update(payload).eq("id", id);
       if (error) {
-        // Fallback without alamat
-        await supabase
-          .from("umkm")
-          .update({
-            nama_usaha: input.nama_usaha,
-            pemilik: input.pemilik,
-            deskripsi: input.deskripsi,
-            kategori: input.kategori,
-            kontak: input.kontak,
-            harga: input.harga,
-            gambar: input.gambar,
-          })
-          .eq("id", id);
+        console.warn("Supabase updateUMKM by id error, retrying without alamat:", error.message);
+        const { alamat, ...payloadWithoutAlamat } = payload;
+        await supabase.from("umkm").update(payloadWithoutAlamat).eq("id", id);
       }
     } else if (input.nama_usaha) {
-      const { error } = await supabase
-        .from("umkm")
-        .update({
-          nama_usaha: input.nama_usaha,
-          pemilik: input.pemilik,
-          deskripsi: input.deskripsi,
-          kategori: input.kategori,
-          kontak: input.kontak,
-          alamat: input.alamat,
-          harga: input.harga,
-          gambar: input.gambar,
-        })
-        .eq("nama_usaha", input.nama_usaha);
-
+      const { error } = await supabase.from("umkm").update(payload).eq("nama_usaha", input.nama_usaha);
       if (error) {
-        // Fallback without alamat
-        await supabase
-          .from("umkm")
-          .update({
-            nama_usaha: input.nama_usaha,
-            pemilik: input.pemilik,
-            deskripsi: input.deskripsi,
-            kategori: input.kategori,
-            kontak: input.kontak,
-            harga: input.harga,
-            gambar: input.gambar,
-          })
-          .eq("nama_usaha", input.nama_usaha);
+        const { alamat, ...payloadWithoutAlamat } = payload;
+        await supabase.from("umkm").update(payloadWithoutAlamat).eq("nama_usaha", input.nama_usaha);
       }
     }
 

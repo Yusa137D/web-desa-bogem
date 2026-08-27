@@ -226,7 +226,8 @@ export async function updateBerita(
   saveLocalBerita(updated);
 
   try {
-    if (typeof id === "number" || (!isNaN(Number(id)) && !String(id).startsWith("local-") && !String(id).startsWith("b-"))) {
+    const isRealDbId = typeof id === "number" || (!String(id).startsWith("local-") && !String(id).startsWith("b-"));
+    if (isRealDbId) {
       const fullUpdate: any = {
         judul: updated.judul,
         konten: updated.konten,
@@ -260,7 +261,8 @@ export async function deleteBerita(id: string | number, judul?: string): Promise
   removeLocalBerita(id, judul);
 
   try {
-    if (typeof id === "number" || (!isNaN(Number(id)) && !String(id).startsWith("local-") && !String(id).startsWith("b-"))) {
+    const isRealDbId = typeof id === "number" || (!String(id).startsWith("local-") && !String(id).startsWith("b-"));
+    if (isRealDbId) {
       await supabase.from("berita").delete().eq("id", id);
     }
     if (judul) {
