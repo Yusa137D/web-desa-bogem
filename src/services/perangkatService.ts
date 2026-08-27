@@ -139,9 +139,12 @@ export async function createPerangkat(input: CreatePerangkatInput): Promise<{ su
   saveLocalPerangkat(newItem);
 
   try {
-    await supabase.from("perangkat_desa").insert([input]);
+    const { error } = await supabase.from("perangkat_desa").insert([input]);
+    if (error) {
+      console.warn("Supabase createPerangkat error:", error.message);
+    }
   } catch (err) {
-    console.warn("Supabase insert warning (saved locally):", err);
+    console.warn("Supabase insert exception:", err);
   }
 
   return { success: true };
@@ -167,8 +170,9 @@ export async function updatePerangkat(
   saveLocalPerangkat(updated);
 
   try {
-    if (typeof id === "number" || (!isNaN(Number(id)) && !String(id).startsWith("local-") && !String(id).startsWith("p-"))) {
-      await supabase
+    const isRealDbId = typeof id === "number" || (!String(id).startsWith("local-") && !String(id).startsWith("p-"));
+    if (isRealDbId) {
+      const { error } = await supabase
         .from("perangkat_desa")
         .update({
           nama: updated.nama,
@@ -178,6 +182,10 @@ export async function updatePerangkat(
           foto: updated.foto,
         })
         .eq("id", id);
+
+      if (error) {
+        console.warn("Supabase updatePerangkat error:", error.message);
+      }
     }
   } catch (err) {
     console.warn("Supabase update warning (saved locally):", err);
@@ -190,7 +198,8 @@ export async function deletePerangkat(id: string | number, nama?: string): Promi
   removeLocalPerangkat(id, nama);
 
   try {
-    if (typeof id === "number" || (!isNaN(Number(id)) && !String(id).startsWith("local-") && !String(id).startsWith("p-"))) {
+    const isRealDbId = typeof id === "number" || (!String(id).startsWith("local-") && !String(id).startsWith("p-"));
+    if (isRealDbId) {
       await supabase.from("perangkat_desa").delete().eq("id", id);
     }
     if (nama) {
