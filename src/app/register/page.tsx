@@ -1,0 +1,304 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth, UserRole } from "@/context/AuthContext";
+import { isValidGmail, isValidPhone, isValidPassword } from "@/utils/validators";
+import { User, Lock, Mail, Phone, ArrowRight, Store, CheckCircle2, AlertCircle, KeyRound, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const { registerWithSupabase, user } = useAuth();
+
+  const [role, setRole] = useState<UserRole>("warga");
+  const [nama, setNama] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [adminSecret, setAdminSecret] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // If already logged in, redirect
+  if (user) {
+    if (user.role === "admin") {
+      router.push("/admin");
+    } else {
+      router.push("/");
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    // Form Client Validations
+    if (!nama || nama.trim().length < 2) {
+      setError("Silakan masukkan nama lengkap yang valid.");
+      return;
+    }
+
+    if (!isValidGmail(email)) {
+      setError("Email wajib menggunakan domain Google Mail (@gmail.com). Contoh: nama@gmail.com");
+      return;
+    }
+
+    if (!isValidPhone(phone)) {
+      setError("Silakan masukkan nomor telepon/WhatsApp yang valid.");
+      return;
+    }
+
+    if (!isValidPassword(password)) {
+      setError("Kata sandi minimal 6 karakter.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Konfirmasi kata sandi tidak cocok dengan kata sandi di atas.");
+      return;
+    }
+
+    if (role === "admin" && !adminSecret) {
+      setError("Kode Rahasia Admin Desa wajib diisi untuk mendaftar sebagai Admin.");
+      return;
+    }
+
+    setLoading(true);
+
+    const res = await registerWithSupabase({
+      email,
+      password,
+      nama,
+      phone,
+      role,
+      adminSecret,
+    });
+
+    if (!res.success) {
+      setError(res.error || "Gagal melakukan pendaftaran.");
+      setLoading(false);
+    } else {
+      setSuccess(true);
+      setLoading(false);
+      setTimeout(() => {
+        router.push(role === "admin" ? "/admin" : "/");
+      }, 1200);
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 py-12">
+      <div className="max-w-md w-full space-y-6">
+        
+        {/* Header Logo */}
+        <div className="text-center space-y-2">
+          <Link href="/" className="inline-flex items-center space-x-3 group">
+            <div className="w-12 h-12 rounded-2xl bg-[#004329] text-white flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+              <Store className="w-6 h-6 text-emerald-300" />
+            </div>
+          </Link>
+          <h1 className="text-2xl font-extrabold text-slate-900">Pendaftaran Akun Desa</h1>
+          <p className="text-xs text-slate-500">
+            Daftarkan akun untuk mengakses layanan digital desa
+          </p>
+        </div>
+
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/80 space-y-6">
+          
+          {/* Role Selector */}
+          <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setRole("warga")}
+              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
+                role === "warga"
+                  ? "bg-white text-[#004329] shadow-sm"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <User className="w-4 h-4" />
+              <span>Warga Desa</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("admin")}
+              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
+                role === "admin"
+                  ? "bg-[#004329] text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Admin Desa</span>
+            </button>
+          </div>
+
+          {success && (
+            <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+              <span>Pendaftaran berhasil! Mengalihkan ke sistem...</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3.5 bg-rose-50 text-rose-700 rounded-2xl border border-rose-200 text-xs font-medium flex items-center space-x-2.5 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
+                Nama Lengkap
+              </label>
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  value={nama}
+                  onChange={(e) => setNama(e.target.value)}
+                  placeholder="Contoh: Budi Santoso"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
+                Alamat Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="budi@gmail.com"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
+                No. HP / WhatsApp
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Contoh: 081234567890"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Secret key input if registering as Admin */}
+            {role === "admin" && (
+              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
+                <label className="block text-xs font-bold text-amber-900 uppercase">
+                  Kode Rahasia Admin Desa
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-600" />
+                  <input
+                    type="password"
+                    required
+                    value={adminSecret}
+                    onChange={(e) => setAdminSecret(e.target.value)}
+                    placeholder="Masukkan PIN / Kode Rahasia Admin"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs text-slate-800 font-bold"
+                  />
+                </div>
+                <p className="text-[11px] text-amber-800">
+                  *Gunakan kode rahasia demo: <code className="font-bold bg-amber-200/60 px-1 py-0.5 rounded">DESA-ADMIN-2026</code>
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
+                Kata Sandi
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimal 6 karakter"
+                  className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
+                Konfirmasi Kata Sandi
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Ketik ulang kata sandi"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || success}
+              className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md mt-2 disabled:opacity-70"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Mendaftarkan Akun...</span>
+                </>
+              ) : (
+                <>
+                  <span>Daftar Akun {role === "admin" ? "Admin" : "Warga"} Sekarang</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="text-center pt-2">
+            <p className="text-xs text-slate-500">
+              Sudah punya akun?{" "}
+              <Link href="/login" className="font-bold text-[#004329] hover:underline">
+                Masuk di Sini
+              </Link>
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  );
+}

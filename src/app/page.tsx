@@ -1,69 +1,116 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  HeroSlider,
+  QuickShortcuts,
+  SambutanKades,
+  VisiMisiSection,
+  AparaturPreview,
+  StatistikSection,
+  BeritaPreview,
+  UMKMPreview,
+  PetaSection,
+} from "@/components/home";
+import { fetchBeritaList, getLocalBerita, fallbackBeritaList } from "@/services/beritaService";
+import { fetchUMKMList, getLocalUMKM, fallbackUMKMList } from "@/services/umkmService";
+import { fetchPerangkatList, getLocalPerangkat, fallbackPerangkatList } from "@/services/perangkatService";
+import { fetchProfilDesa, getLocalProfil, defaultProfilDesa } from "@/services/profilService";
+import { BeritaItem } from "@/types/berita";
+import { UMKMItem } from "@/types/umkm";
+import { PerangkatItem } from "@/types/perangkat";
+import { ProfilDesaData } from "@/types/profil";
 
 export default function Home() {
+  // Initial state strictly matches Server-Side Rendering to prevent Hydration Mismatch
+  const [listBerita, setListBerita] = useState<BeritaItem[]>(() => fallbackBeritaList.slice(0, 3));
+  const [listUMKM, setListUMKM] = useState<UMKMItem[]>(() => fallbackUMKMList.slice(0, 3));
+  const [listPerangkat, setListPerangkat] = useState<PerangkatItem[]>(() => fallbackPerangkatList);
+  const [profilData, setProfilData] = useState<ProfilDesaData>(() => defaultProfilDesa);
+
+  useEffect(() => {
+    // 1. Immediately hydrate with cached local data on client mount
+    const localBerita = getLocalBerita();
+    if (localBerita && localBerita.length > 0) setListBerita(localBerita.slice(0, 3));
+
+    const localUMKM = getLocalUMKM();
+    if (localUMKM && localUMKM.length > 0) setListUMKM(localUMKM.slice(0, 3));
+
+    const localPerangkat = getLocalPerangkat();
+    if (localPerangkat && localPerangkat.length > 0) setListPerangkat(localPerangkat);
+
+    const localProfil = getLocalProfil();
+    if (localProfil) setProfilData(localProfil);
+
+    // 2. Fetch latest data asynchronously from Supabase / API
+    async function loadAllData() {
+      try {
+        const [berita, umkm, perangkat, profil] = await Promise.all([
+          fetchBeritaList(),
+          fetchUMKMList(),
+          fetchPerangkatList(),
+          fetchProfilDesa(),
+        ]);
+        setListBerita(berita.slice(0, 3));
+        setListUMKM(umkm.slice(0, 3));
+        setListPerangkat(perangkat);
+        setProfilData(profil);
+      } catch (err) {
+        console.error("Error loading home page data:", err);
+      }
+    }
+    loadAllData();
+
+    // 3. Reactive event listeners for real-time updates from admin actions
+    const handleReload = () => {
+      loadAllData();
+    };
+
+    window.addEventListener("local_umkm_updated", handleReload);
+    window.addEventListener("local_berita_updated", handleReload);
+    window.addEventListener("local_perangkat_updated", handleReload);
+    window.addEventListener("local_profil_updated", handleReload);
+    window.addEventListener("local_infografis_updated", handleReload);
+    window.addEventListener("storage", handleReload);
+
+    return () => {
+      window.removeEventListener("local_umkm_updated", handleReload);
+      window.removeEventListener("local_berita_updated", handleReload);
+      window.removeEventListener("local_perangkat_updated", handleReload);
+      window.removeEventListener("local_profil_updated", handleReload);
+      window.removeEventListener("local_infografis_updated", handleReload);
+      window.removeEventListener("storage", handleReload);
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="min-h-screen bg-[#F8FAFC] overflow-x-hidden">
+      {/* 1. Hero Slider Banner */}
+      <HeroSlider />
+
+      {/* 2. Quick Shortcuts Grid */}
+      <QuickShortcuts />
+
+      {/* 3. Sambutan Kepala Desa */}
+      <SambutanKades profilData={profilData} listPerangkat={listPerangkat} />
+
+      {/* 4. Visi & Misi Pembangunan */}
+      <VisiMisiSection profilData={profilData} />
+
+      {/* 5. Struktur SOTK / Aparatur Desa */}
+      <AparaturPreview listPerangkat={listPerangkat} />
+
+      {/* 6. Statistik & Infografis Ringkas */}
+      <StatistikSection />
+
+      {/* 7. Kabar & Berita Terbaru */}
+      <BeritaPreview listBerita={listBerita} />
+
+      {/* 8. Beli Dari Desa (UMKM Unggulan) */}
+      <UMKMPreview listUMKM={listUMKM} />
+
+      {/* 9. Peta Wilayah & Informasi Kantor */}
+      <PetaSection />
+    </main>
   );
 }
