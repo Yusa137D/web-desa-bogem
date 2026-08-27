@@ -20,8 +20,22 @@ export default function MobileNav() {
     { name: "Surat", href: "/layanan-surat", icon: FileText },
   ];
 
+  const handleNavClick = (href: string, e: React.MouseEvent) => {
+    if (pathname === href) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#002B1B]/95 backdrop-blur-md border-t border-emerald-800/80 px-2 py-2 pb-safe shadow-2xl">
+    <nav
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-[9999] bg-[#002B1B]/95 backdrop-blur-md border-t border-emerald-800/80 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-2xl touch-manipulation select-none"
+      style={{
+        transform: "translateZ(0)",
+        WebkitTransform: "translateZ(0)",
+        WebkitBackfaceVisibility: "hidden",
+      }}
+    >
       <div className="flex justify-around items-center max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -31,13 +45,15 @@ export default function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all duration-200 active:scale-90 ${
+              prefetch={true}
+              onClick={(e) => handleNavClick(item.href, e)}
+              className={`flex flex-col items-center justify-center min-w-[54px] min-h-[48px] py-1 px-2 rounded-xl transition-all duration-150 active:scale-90 cursor-pointer ${
                 isActive
                   ? "text-emerald-300 font-bold"
                   : "text-emerald-200/70 hover:text-white"
               }`}
             >
-              <div className={`p-1 rounded-lg ${isActive ? "bg-emerald-800/60" : ""}`}>
+              <div className={`p-1.5 rounded-lg transition-colors ${isActive ? "bg-emerald-800/70" : ""}`}>
                 <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5]" : "stroke-[1.75]"}`} />
               </div>
               <span className="text-[10px] tracking-tight mt-0.5">{item.name}</span>
