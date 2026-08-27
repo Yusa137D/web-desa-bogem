@@ -173,20 +173,33 @@ export async function createBerita(input: CreateBeritaInput): Promise<{ success:
   // 1. Save to local storage immediately
   saveLocalBerita(newItem);
 
-  // 2. Insert to Supabase table
+  // 2. Insert to Supabase table with smart fallback
   try {
-    await supabase.from("berita").insert([
-      {
-        judul: input.judul,
-        konten: input.konten,
-        penulis: input.penulis || "Pemerintah Desa Bogem",
-        kategori: input.kategori || "Pengumuman Resmi",
-        gambar: input.gambar,
-        created_at: newItem.created_at,
-      },
-    ]);
+    const fullPayload: any = {
+      judul: input.judul,
+      konten: input.konten,
+      penulis: input.penulis || "Pemerintah Desa Bogem",
+      kategori: input.kategori || "Pengumuman Resmi",
+      gambar: input.gambar,
+      created_at: newItem.created_at,
+    };
+    if (input.ringkasan) fullPayload.ringkasan = input.ringkasan;
+
+    const { error } = await supabase.from("berita").insert([fullPayload]);
+    if (error) {
+      console.warn("Supabase insert with full payload failed, retrying with core columns:", error.message);
+      // Fallback: insert with core columns only
+      await supabase.from("berita").insert([
+        {
+          judul: input.judul,
+          konten: input.konten,
+          gambar: input.gambar,
+          created_at: newItem.created_at,
+        },
+      ]);
+    }
   } catch (err) {
-    console.warn("Supabase insert warning (saved locally):", err);
+    console.warn("Supabase insert exception (saved locally):", err);
   }
 
   return { success: true };
@@ -214,16 +227,27 @@ export async function updateBerita(
 
   try {
     if (typeof id === "number" || (!isNaN(Number(id)) && !String(id).startsWith("local-") && !String(id).startsWith("b-"))) {
-      await supabase
-        .from("berita")
-        .update({
-          judul: updated.judul,
-          konten: updated.konten,
-          penulis: updated.penulis,
-          kategori: updated.kategori,
-          gambar: updated.gambar,
-        })
-        .eq("id", id);
+      const fullUpdate: any = {
+        judul: updated.judul,
+        konten: updated.konten,
+        penulis: updated.penulis,
+        kategori: updated.kategori,
+        gambar: updated.gambar,
+      };
+      if (updated.ringkasan) fullUpdate.ringkasan = updated.ringkasan;
+
+      const { error } = await supabase.from("berita").update(fullUpdate).eq("id", id);
+      if (error) {
+        // Fallback update with core columns only
+        await supabase
+          .from("berita")
+          .update({
+            judul: updated.judul,
+            konten: updated.konten,
+            gambar: updated.gambar,
+          })
+          .eq("id", id);
+      }
     }
   } catch (err) {
     console.warn("Supabase update warning (saved locally):", err);

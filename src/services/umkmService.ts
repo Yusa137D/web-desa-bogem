@@ -137,7 +137,12 @@ export async function createUMKM(input: CreateUMKMInput): Promise<{ success: boo
   saveLocalUMKM(newItem);
 
   try {
-    await supabase.from("umkm").insert([input]);
+    const { error } = await supabase.from("umkm").insert([input]);
+    if (error) {
+      console.warn("Supabase insert with alamat failed, retrying without alamat:", error.message);
+      const { alamat, ...inputWithoutAlamat } = input;
+      await supabase.from("umkm").insert([inputWithoutAlamat]);
+    }
   } catch (err) {
     console.warn("Supabase insert warning (saved locally):", err);
   }
@@ -170,7 +175,7 @@ export async function updateUMKM(
         !String(id).startsWith("local-") &&
         !String(id).startsWith("demo-"))
     ) {
-      await supabase
+      const { error } = await supabase
         .from("umkm")
         .update({
           nama_usaha: input.nama_usaha,
@@ -183,8 +188,24 @@ export async function updateUMKM(
           gambar: input.gambar,
         })
         .eq("id", id);
+
+      if (error) {
+        // Fallback without alamat
+        await supabase
+          .from("umkm")
+          .update({
+            nama_usaha: input.nama_usaha,
+            pemilik: input.pemilik,
+            deskripsi: input.deskripsi,
+            kategori: input.kategori,
+            kontak: input.kontak,
+            harga: input.harga,
+            gambar: input.gambar,
+          })
+          .eq("id", id);
+      }
     } else if (input.nama_usaha) {
-      await supabase
+      const { error } = await supabase
         .from("umkm")
         .update({
           nama_usaha: input.nama_usaha,
@@ -197,6 +218,22 @@ export async function updateUMKM(
           gambar: input.gambar,
         })
         .eq("nama_usaha", input.nama_usaha);
+
+      if (error) {
+        // Fallback without alamat
+        await supabase
+          .from("umkm")
+          .update({
+            nama_usaha: input.nama_usaha,
+            pemilik: input.pemilik,
+            deskripsi: input.deskripsi,
+            kategori: input.kategori,
+            kontak: input.kontak,
+            harga: input.harga,
+            gambar: input.gambar,
+          })
+          .eq("nama_usaha", input.nama_usaha);
+      }
     }
 
     if (typeof window !== "undefined") {
