@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { fetchPerangkatList, createPerangkat, updatePerangkat, deletePerangkat } from "@/services/perangkatService";
 import { PerangkatItem } from "@/types/perangkat";
+import { compressImage } from "@/utils/imageCompressor";
 import {
   ArrowLeft,
   Send,
@@ -84,27 +85,27 @@ export default function KelolaSOTKAdmin() {
     if (file) processFile(file);
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       setFeedbackMessage("Berkas harus berupa gambar (JPG, PNG, WEBP).");
       setStatus("error");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setFeedbackMessage("Ukuran foto maksimal 5MB.");
-      setStatus("error");
-      return;
+    try {
+      const compressed = await compressImage(file, 800, 1000, 0.82);
+      setFoto(compressed);
+      setStatus("idle");
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFoto(event.target.result as string);
+          setStatus("idle");
+        }
+      };
+      reader.readAsDataURL(file);
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setFoto(event.target.result as string);
-        setStatus("idle");
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {

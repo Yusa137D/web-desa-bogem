@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { fetchProfilDesa, updateProfilDesa } from "@/services/profilService";
 import { BatasWilayah } from "@/types/profil";
+import { compressImage } from "@/utils/imageCompressor";
 import {
   ArrowLeft,
   Send,
@@ -122,7 +123,7 @@ function KelolaProfilDesaContent() {
     loadData();
   }, []);
 
-  const handleImageUpload = (
+  const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     setter: (url: string) => void
   ) => {
@@ -134,18 +135,18 @@ function KelolaProfilDesaContent() {
       return;
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert("Ukuran gambar maksimal 8MB.");
-      return;
+    try {
+      const compressed = await compressImage(file, 1400, 1000, 0.82);
+      setter(compressed);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setter(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setter(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleAddMisi = () => {

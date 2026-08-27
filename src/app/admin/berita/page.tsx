@@ -9,6 +9,7 @@ import {
 } from "@/services/beritaService";
 import { BeritaItem, KATEGORI_BERITA_PRESETS } from "@/types/berita";
 import { formatDateIndonesian } from "@/utils/formatters";
+import { compressImage } from "@/utils/imageCompressor";
 import {
   ArrowLeft,
   Send,
@@ -74,27 +75,27 @@ export default function KelolaBeritaAdmin() {
     if (file) processFile(file);
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       setErrorMessage("Berkas harus berupa gambar (JPG, PNG, WEBP).");
       setStatus("error");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage("Ukuran gambar maksimal 5MB.");
-      setStatus("error");
-      return;
+    try {
+      const compressed = await compressImage(file, 1200, 800, 0.82);
+      setGambar(compressed);
+      setStatus("idle");
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setGambar(event.target.result as string);
+          setStatus("idle");
+        }
+      };
+      reader.readAsDataURL(file);
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setGambar(event.target.result as string);
-        setStatus("idle");
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {

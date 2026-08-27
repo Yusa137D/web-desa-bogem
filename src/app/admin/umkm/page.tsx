@@ -11,6 +11,7 @@ import {
 import { UMKMItem } from "@/types/umkm";
 import { UMKM_CATEGORIES } from "@/utils/constants";
 import { formatRupiahInput } from "@/utils/formatters";
+import { compressImage } from "@/utils/imageCompressor";
 import {
   ArrowLeft,
   Send,
@@ -89,29 +90,28 @@ export default function KelolaUMKMAdmin() {
     }
   };
 
-  // Convert image file to Data URL (Base64)
-  const processFile = (file: File) => {
+  // Convert image file to compressed Data URL (WebP/JPEG)
+  const processFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       setFeedbackMsg("Berkas harus berupa gambar (JPG, PNG, WEBP).");
       setStatus("error");
       return;
     }
 
-    // Limit file size to 5MB
-    if (file.size > 5 * 1024 * 1024) {
-      setFeedbackMsg("Ukuran gambar maksimal 5MB.");
-      setStatus("error");
-      return;
+    try {
+      const compressed = await compressImage(file, 1200, 900, 0.82);
+      setGambar(compressed);
+      setStatus("idle");
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setGambar(event.target.result as string);
+          setStatus("idle");
+        }
+      };
+      reader.readAsDataURL(file);
     }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setGambar(event.target.result as string);
-        setStatus("idle");
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   // Handle Drag and Drop events

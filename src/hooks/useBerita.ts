@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BeritaItem } from "@/types/berita";
-import { fetchBeritaList } from "@/services/beritaService";
+import { fetchBeritaList, getLocalBerita } from "@/services/beritaService";
 
 export function useBerita() {
   const [data, setData] = useState<BeritaItem[]>([]);
@@ -10,8 +10,6 @@ export function useBerita() {
   const [error, setError] = useState<string | null>(null);
 
   const loadData = async () => {
-    setLoading(true);
-    setError(null);
     try {
       const items = await fetchBeritaList();
       setData(items);
@@ -24,6 +22,14 @@ export function useBerita() {
   };
 
   useEffect(() => {
+    // 1. Instantly populate from cache if available
+    const local = getLocalBerita();
+    if (local && local.length > 0) {
+      setData(local);
+      setLoading(false);
+    }
+
+    // 2. Fetch latest data
     loadData();
 
     const handleUpdate = () => {

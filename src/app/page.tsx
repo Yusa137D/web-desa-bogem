@@ -42,22 +42,23 @@ export default function Home() {
     const localProfil = getLocalProfil();
     if (localProfil) setProfilData(localProfil);
 
-    // 2. Fetch latest data asynchronously from Supabase / API
+    // 2. Fetch latest data concurrently from Supabase without blocking each other
     async function loadAllData() {
-      try {
-        const [berita, umkm, perangkat, profil] = await Promise.all([
-          fetchBeritaList(),
-          fetchUMKMList(),
-          fetchPerangkatList(),
-          fetchProfilDesa(),
-        ]);
-        setListBerita(berita.slice(0, 3));
-        setListUMKM(umkm.slice(0, 3));
-        setListPerangkat(perangkat);
-        setProfilData(profil);
-      } catch (err) {
-        console.error("Error loading home page data:", err);
-      }
+      fetchBeritaList()
+        .then((berita) => setListBerita(berita.slice(0, 3)))
+        .catch((err) => console.error("Error loading berita:", err));
+
+      fetchUMKMList()
+        .then((umkm) => setListUMKM(umkm.slice(0, 3)))
+        .catch((err) => console.error("Error loading UMKM:", err));
+
+      fetchPerangkatList()
+        .then((perangkat) => setListPerangkat(perangkat))
+        .catch((err) => console.error("Error loading perangkat:", err));
+
+      fetchProfilDesa()
+        .then((profil) => setProfilData(profil))
+        .catch((err) => console.error("Error loading profil:", err));
     }
     loadAllData();
 
