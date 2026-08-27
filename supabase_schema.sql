@@ -110,11 +110,19 @@ CREATE TABLE IF NOT EXISTS public.profil_desa (
 );
 
 -- Migrasi kolom profil desa jika tabel sudah ada sebelumnya:
+ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS bagan_desa_image TEXT;
+ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS bagan_bpd_image TEXT;
+ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS sejarah TEXT;
+ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS luas_wilayah TEXT DEFAULT '245 Ha';
+ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS jumlah_penduduk TEXT DEFAULT '3.620 Jiwa';
+ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS ketinggian TEXT DEFAULT '± 78 mdpl';
+ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS batas_wilayah JSONB DEFAULT '{"utara": "Desa Tladan / Genengan", "timur": "Desa Pojok / Kawedanan", "selatan": "Desa Giripurno", "barat": "Desa Sugihrejo"}'::jsonb;
 ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS jam_pelayanan TEXT DEFAULT 'Senin - Jumat: 08.00 - 15.00 WIB';
 ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS jam_pelayanan_note TEXT DEFAULT '*Sabtu & Minggu: Libur / Pelayanan Darurat';
 ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS alamat_kantor TEXT DEFAULT 'Jl. Bakti Mulya No. 241, Desa Bogem, Kec. Kawedanan, Kab. Magetan';
 ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS telepon_kantor TEXT DEFAULT '+62 812-3456-7890';
 ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS email_kantor TEXT DEFAULT 'info@desabogem.id';
+
 
 -- ==============================================================================
 -- SEED DATA DEFAULT (Inisialisasi Data Awal jika Tabel Masih Kosong)
