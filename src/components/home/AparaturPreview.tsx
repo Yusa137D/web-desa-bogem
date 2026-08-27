@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Users, Sparkles, UserCheck, ArrowRight } from "lucide-react";
 import { PerangkatItem } from "@/types/perangkat";
+import ImageWithSkeleton from "@/components/ImageWithSkeleton";
 
 interface AparaturPreviewProps {
   listPerangkat: PerangkatItem[];
@@ -13,20 +14,20 @@ export default function AparaturPreview({ listPerangkat }: AparaturPreviewProps)
         <div>
           <div className="inline-flex items-center space-x-2 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
             <Users className="w-3.5 h-3.5" />
-            <span>SOTK Pemerintahan Desa</span>
+            <span>Pemerintahan Desa</span>
           </div>
           <h2 className="text-xl sm:text-3xl font-extrabold text-slate-900">
             Aparatur & Perangkat Desa
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
-            Struktur Organisasi dan Tata Kerja Pemerintah Desa Bogem yang berdedikasi melayani masyarakat.
+            Struktur Organisasi dan Tata Kerja (SOTK) Pemerintah Desa Bogem yang siap melayani masyarakat.
           </p>
         </div>
         <Link
           href="/pemerintah"
-          className="inline-flex items-center space-x-1 text-xs font-bold text-emerald-800 hover:underline flex-shrink-0"
+          className="inline-flex items-center space-x-1 text-xs font-bold text-[#004329] hover:underline flex-shrink-0"
         >
-          <span>Bagan Struktur Lengkap</span>
+          <span>Semua Perangkat</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -34,9 +35,9 @@ export default function AparaturPreview({ listPerangkat }: AparaturPreviewProps)
       {listPerangkat.length === 0 ? (
         <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border border-slate-200/80 space-y-2">
           <Users className="w-10 h-10 text-slate-300 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800">Data Aparatur Belum Diunggah</h3>
+          <h3 className="text-base font-bold text-slate-800">Belum Ada Data Aparatur</h3>
           <p className="text-xs text-slate-500">
-            Daftar susunan aparatur pemerintah desa akan segera diperbarui.
+            Data susunan perangkat desa akan segera diperbarui.
           </p>
         </div>
       ) : (
@@ -58,21 +59,14 @@ export default function AparaturPreview({ listPerangkat }: AparaturPreviewProps)
               >
                 {/* Photo container with fixed aspect ratio */}
                 <div className="relative aspect-[3/4] rounded-xl sm:rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
-                  {p.foto ? (
-                    <img
-                      src={p.foto}
-                      alt={p.nama}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50">
-                      <UserCheck className="w-8 h-8 sm:w-12 sm:h-12" />
-                    </div>
-                  )}
+                  <ImageWithSkeleton
+                    src={p.foto}
+                    alt={p.nama}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    fallbackIcon={<UserCheck className="w-8 h-8 sm:w-12 sm:h-12 text-slate-300" />}
+                  />
                   {isKades && (
-                    <div className="absolute top-2 left-2 bg-[#004329] text-white text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow flex items-center space-x-1">
+                    <div className="absolute top-2 left-2 bg-[#004329] text-white text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shadow flex items-center space-x-1 z-10">
                       <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-300" />
                       <span>Pimpinan</span>
                     </div>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { fetchPerangkatList, getLocalPerangkat, fallbackPerangkatList } from "@/services/perangkatService";
 import { PerangkatItem } from "@/types/perangkat";
+import ImageWithSkeleton from "@/components/ImageWithSkeleton";
 
 export default function PemerintahPage() {
   // Initial state strictly matches SSR to prevent Hydration Mismatch
@@ -213,25 +214,15 @@ export default function PemerintahPage() {
                 >
                   {/* Portrait photo */}
                   <div className="relative aspect-[3/4] rounded-xl sm:rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
-                    {p.foto ? (
-                      <img
-                        src={p.foto}
-                        alt={p.nama}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50">
-                        <UserCheck className="w-10 h-10 sm:w-16 sm:h-16" />
-                      </div>
-                    )}
+                    <ImageWithSkeleton
+                      src={p.foto}
+                      alt={p.nama}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      fallbackIcon={<UserCheck className="w-10 h-10 sm:w-16 sm:h-16 text-slate-300" />}
+                    />
 
                     {isKades && (
-                      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-[#004329] text-white text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-lg flex items-center space-x-1 border border-emerald-400/30">
+                      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-[#004329] text-white text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-lg flex items-center space-x-1 border border-emerald-400/30 z-10">
                         <Sparkles className="w-3 h-3 text-amber-300 flex-shrink-0" />
                         <span>Pimpinan</span>
                       </div>

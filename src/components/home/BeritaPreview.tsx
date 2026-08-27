@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Newspaper, Calendar, ArrowRight, Image as ImageIcon } from "lucide-react";
 import { BeritaItem } from "@/types/berita";
 import { formatDateIndonesian } from "@/utils/formatters";
+import ImageWithSkeleton from "@/components/ImageWithSkeleton";
 
 interface BeritaPreviewProps {
   listBerita: BeritaItem[];
@@ -48,21 +49,14 @@ export default function BeritaPreview({ listBerita }: BeritaPreviewProps) {
               className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-200/80 transition-all duration-300 flex flex-col justify-between group"
             >
               <Link href={`/berita/${item.id}`} className="block relative aspect-[16/9] bg-slate-100 overflow-hidden">
-                {item.gambar ? (
-                  <img
-                    src={item.gambar}
-                    alt={item.judul}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-700">
-                    <ImageIcon className="w-10 h-10" />
-                  </div>
-                )}
+                <ImageWithSkeleton
+                  src={item.gambar}
+                  alt={item.judul}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fallbackIcon={<ImageIcon className="w-10 h-10 text-emerald-600/40" />}
+                />
                 {item.created_at && (
-                  <div className="absolute top-3 left-3 bg-[#004329]/90 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow flex items-center space-x-1">
+                  <div className="absolute top-3 left-3 bg-[#004329]/90 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow flex items-center space-x-1 z-10">
                     <Calendar className="w-3 h-3 text-emerald-300 flex-shrink-0" />
                     <span>{formatDateIndonesian(item.created_at)}</span>
                   </div>

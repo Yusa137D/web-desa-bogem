@@ -15,6 +15,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { KATEGORI_BERITA_PRESETS } from "@/types/berita";
+import ImageWithSkeleton from "@/components/ImageWithSkeleton";
 
 export default function BeritaPage() {
   const { data: listBerita, loading } = useBerita();
@@ -123,19 +124,12 @@ export default function BeritaPage() {
               >
                 {/* News Banner Photo with Link */}
                 <Link href={`/berita/${item.id}`} className="block relative aspect-[16/9] bg-slate-100 overflow-hidden">
-                  {item.gambar ? (
-                    <img
-                      src={item.gambar}
-                      alt={item.judul}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-700 font-bold">
-                      <ImageIcon className="w-10 h-10 stroke-[1.5]" />
-                    </div>
-                  )}
+                  <ImageWithSkeleton
+                    src={item.gambar}
+                    alt={item.judul}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    fallbackIcon={<ImageIcon className="w-10 h-10 text-emerald-600/40" />}
+                  />
                   {item.created_at && (
                     <div className="absolute top-3 left-3 bg-[#004329]/90 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center space-x-1.5">
                       <Calendar className="w-3 h-3 text-emerald-300 flex-shrink-0" />

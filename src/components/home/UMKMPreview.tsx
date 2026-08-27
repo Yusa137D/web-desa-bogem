@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ShoppingBag, Phone, ArrowRight, MapPin } from "lucide-react";
 import { UMKMItem } from "@/types/umkm";
+import ImageWithSkeleton from "@/components/ImageWithSkeleton";
 
 interface UMKMPreviewProps {
   listUMKM: UMKMItem[];
@@ -47,21 +48,14 @@ export default function UMKMPreview({ listUMKM }: UMKMPreviewProps) {
               className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-200/80 transition-all duration-300 flex flex-col justify-between group"
             >
               <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                {item.gambar ? (
-                  <img
-                    src={item.gambar}
-                    alt={item.nama_usaha}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-700">
-                    <ShoppingBag className="w-10 h-10" />
-                  </div>
-                )}
+                <ImageWithSkeleton
+                  src={item.gambar}
+                  alt={item.nama_usaha}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fallbackIcon={<ShoppingBag className="w-10 h-10 text-emerald-600/40" />}
+                />
                 {item.kategori && (
-                  <div className="absolute top-3 left-3 bg-[#004329]/90 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow">
+                  <div className="absolute top-3 left-3 bg-[#004329]/90 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow z-10">
                     {item.kategori}
                   </div>
                 )}

@@ -6,6 +6,7 @@ import { UMKMItem } from "@/types/umkm";
 import { UMKM_CATEGORIES } from "@/utils/constants";
 import { formatWhatsAppLink } from "@/utils/formatters";
 import { Search, ShoppingBag, Phone, Store, User, Sparkles, Filter, X, Tag, MapPin } from "lucide-react";
+import ImageWithSkeleton from "@/components/ImageWithSkeleton";
 
 export default function PotensiDesa() {
   const { data: dataUMKM, loading } = useUMKM();
@@ -136,20 +137,13 @@ export default function PotensiDesa() {
                   >
                     {/* Image Banner */}
                     <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                      {item.gambar ? (
-                        <img
-                          src={item.gambar}
-                          alt={item.nama_usaha}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-emerald-50 text-emerald-700 font-bold">
-                          <Store className="w-12 h-12 stroke-[1.5]" />
-                        </div>
-                      )}
-                      <span className="absolute top-3 right-3 bg-white/95 backdrop-blur text-[#004329] text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+                      <ImageWithSkeleton
+                        src={item.gambar}
+                        alt={item.nama_usaha}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        fallbackIcon={<Store className="w-12 h-12 stroke-[1.5] text-emerald-600/40" />}
+                      />
+                      <span className="absolute top-3 right-3 bg-white/95 backdrop-blur text-[#004329] text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm z-10">
                         {item.kategori}
                       </span>
                     </div>

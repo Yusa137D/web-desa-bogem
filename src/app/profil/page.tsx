@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import VillageMap from "@/components/VillageMap";
-import { fetchProfilDesa, defaultProfilDesa, defaultSejarahDesa, defaultBatasWilayah } from "@/services/profilService";
+import { fetchProfilDesa, getLocalProfil, defaultProfilDesa, defaultSejarahDesa, defaultBatasWilayah } from "@/services/profilService";
 import { ProfilDesaData } from "@/types/profil";
 
 export default function ProfilPage() {
@@ -31,15 +31,35 @@ export default function ProfilPage() {
   const [zoomImage, setZoomImage] = useState<{ src: string; title: string } | null>(null);
 
   useEffect(() => {
+    // 1. Immediately hydrate with cached local data
+    const local = getLocalProfil();
+    if (local && (local.visi || local.nama_kades)) {
+      setProfilData(local);
+    }
+
+    // 2. Fetch fresh data in background
     async function loadData() {
       try {
         const profil = await fetchProfilDesa();
-        setProfilData(profil);
+        if (profil) setProfilData(profil);
       } catch (err) {
         console.error("Error loading profil data:", err);
       }
     }
     loadData();
+
+    const handleUpdate = () => {
+      const updated = getLocalProfil();
+      if (updated) setProfilData(updated);
+    };
+
+    window.addEventListener("local_profil_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    return () => {
+      window.removeEventListener("local_profil_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
   }, []);
 
   const batas = profilData.batas_wilayah || defaultBatasWilayah;
