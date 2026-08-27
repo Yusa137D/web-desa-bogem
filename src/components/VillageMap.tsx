@@ -16,7 +16,7 @@ interface MapLocationData {
 
 export default function VillageMap() {
   const [mapData, setMapData] = useState<MapLocationData | null>(null);
-  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
+  const [isIframeLoaded, setIsIframeLoaded] = useState(true);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -34,25 +34,6 @@ export default function VillageMap() {
 
     loadMapData();
   }, []);
-
-  // Lazy-load the heavy Google Map iframe only when scrolled near into view
-  useEffect(() => {
-    if (isIframeLoaded || !mapContainerRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setIsIframeLoaded(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "250px" } // Pre-load 250px before entering viewport
-    );
-
-    observer.observe(mapContainerRef.current);
-
-    return () => observer.disconnect();
-  }, [isIframeLoaded]);
 
   const defaultEmbed =
     "https://maps.google.com/maps?q=Kantor+Desa+Bogem+Kawedanan+Magetan&t=&z=16&ie=UTF8&iwloc=&output=embed";
