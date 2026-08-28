@@ -254,6 +254,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           errorMsg = "Email ini sudah terdaftar. Silakan lakukan Login.";
         } else if (error.message.includes("Password should be at least")) {
           errorMsg = "Kata sandi minimal 6 karakter.";
+        } else if (error.message.toLowerCase().includes("rate limit") || error.message.toLowerCase().includes("exceeded")) {
+          errorMsg = "Batas pengiriman email Supabase tercapai. Harap nonaktifkan 'Confirm email' di dashboard Supabase agar pendaftaran warga bisa langsung aktif tanpa verifikasi email.";
         }
         return { success: false, error: errorMsg };
       }
