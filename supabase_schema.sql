@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS public.opsi_surat (
 -- 3. TABEL 'permohonan_surat' (Data Pengajuan Surat Warga, Isian Form, & File Hasil Surat)
 CREATE TABLE IF NOT EXISTS public.permohonan_surat (
   id TEXT PRIMARY KEY, -- Kode Tiket (misal: SRT-202508-4921)
+  user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- Relasi ke Akun Warga
+  opsi_surat_id TEXT REFERENCES public.opsi_surat(id) ON DELETE SET NULL, -- Relasi ke Master Jenis Surat
   nik TEXT NOT NULL,
   nama_lengkap TEXT NOT NULL,
   no_whatsapp TEXT NOT NULL,
@@ -46,9 +48,15 @@ CREATE TABLE IF NOT EXISTS public.permohonan_surat (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Migrasi relasi Foreign Key jika tabel permohonan_surat sudah ada sebelumnya:
+ALTER TABLE public.permohonan_surat ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.permohonan_surat ADD COLUMN IF NOT EXISTS opsi_surat_id TEXT REFERENCES public.opsi_surat(id) ON DELETE SET NULL;
+ALTER TABLE public.permohonan_surat ADD COLUMN IF NOT EXISTS data_formulir JSONB DEFAULT '{}'::jsonb;
+
 -- 4. TABEL 'berita' (Kabar Publik & Warta Desa)
 CREATE TABLE IF NOT EXISTS public.berita (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- Relasi ke Akun Penulis / Admin
   judul TEXT NOT NULL,
   kategori TEXT DEFAULT 'Pengumuman Resmi',
   penulis TEXT DEFAULT 'Pemerintah Desa Bogem',
@@ -57,6 +65,9 @@ CREATE TABLE IF NOT EXISTS public.berita (
   gambar TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migrasi relasi Foreign Key jika tabel berita sudah ada sebelumnya:
+ALTER TABLE public.berita ADD COLUMN IF NOT EXISTS author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 -- 5. TABEL 'umkm' (Etalase Produk Unggulan Warga)
 CREATE TABLE IF NOT EXISTS public.umkm (
