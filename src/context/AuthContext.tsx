@@ -253,8 +253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           errorMsg = "Email ini sudah terdaftar. Silakan lakukan Login.";
         } else if (error.message.includes("Password should be at least")) {
           errorMsg = "Kata sandi minimal 6 karakter.";
+        } else if (error.message.toLowerCase().includes("error sending confirmation email")) {
+          errorMsg = "Gagal mengirim email konfirmasi. Pengaturan Custom SMTP belum sesuai, atau silakan nonaktifkan 'Confirm email' di Supabase agar registrasi aktif instan.";
         } else if (error.message.toLowerCase().includes("rate limit") || error.message.toLowerCase().includes("exceeded")) {
-          errorMsg = "Batas pengiriman email Supabase tercapai. Harap nonaktifkan 'Confirm email' di dashboard Supabase atau aktifkan Custom SMTP.";
+          errorMsg = "Batas pengiriman email Supabase tercapai. Harap nonaktifkan 'Confirm email' di dashboard Supabase atau periksa Custom SMTP Anda.";
         }
         return { success: false, error: errorMsg };
       }
