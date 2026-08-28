@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, UserRole } from "@/context/AuthContext";
-import { isValidGmail } from "@/utils/validators";
-import { ShieldCheck, User, Lock, Mail, ArrowRight, Store, AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
+import { isValidGmail, isValidNIK } from "@/utils/validators";
+import { ShieldCheck, User, Lock, Mail, ArrowRight, Store, AlertCircle, Eye, EyeOff, Loader2, CreditCard } from "lucide-react";
 import Link from "next/link";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get("redirect") || "";
   const { loginWithSupabase, demoLogin, user } = useAuth();
 
   const [role, setRole] = useState<UserRole>("warga");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +25,7 @@ export default function LoginPage() {
     if (user.role === "admin") {
       router.push("/admin");
     } else {
-      router.push("/");
+      router.push(redirectPath || "/");
     }
   }
 
@@ -31,10 +33,19 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    // Form Client Validation
-    if (!isValidGmail(email)) {
-      setError("Email wajib menggunakan format @gmail.com. Contoh: nama@gmail.com");
-      return;
+    const clean = identifier.trim();
+    const isNik = /^[0-9]{16}$/.test(clean);
+
+    if (role === "warga") {
+      if (!isNik && !isValidGmail(clean)) {
+        setError("Masukkan 16 digit NIK KTP atau Alamat Email @gmail.com yang valid.");
+        return;
+      }
+    } else {
+      if (!clean.includes("@")) {
+        setError("Masukkan alamat email admin yang valid.");
+        return;
+      }
     }
 
     if (!password || password.length < 6) {
@@ -44,14 +55,14 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const res = await loginWithSupabase(email, password);
+    const res = await loginWithSupabase(clean, password);
 
     if (!res.success) {
       setError(res.error || "Gagal masuk. Silakan coba lagi.");
       setLoading(false);
     } else {
       setLoading(false);
-      router.push(role === "admin" ? "/admin" : "/");
+      router.push(role === "admin" ? "/admin" : (redirectPath || "/"));
     }
   };
 
@@ -60,7 +71,7 @@ export default function LoginPage() {
     if (selectedRole === "admin") {
       router.push("/admin");
     } else {
-      router.push("/");
+      router.push(redirectPath || "/");
     }
   };
 
@@ -77,7 +88,7 @@ export default function LoginPage() {
           </Link>
           <h1 className="text-2xl font-extrabold text-slate-900">Masuk ke Portal Desa</h1>
           <p className="text-xs text-slate-500">
-            Masuk dengan akun Warga atau Perangkat Desa
+            Masuk dengan NIK KTP / Email Warga atau Akun Perangkat Desa
           </p>
         </div>
 
@@ -122,16 +133,20 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                Alamat Email
+                {role === "warga" ? "NIK KTP (16 Digit) atau Email" : "Alamat Email Admin"}
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                {role === "warga" ? (
+                  <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                ) : (
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                )}
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={role === "admin" ? "admin@desa.id" : "warga@gmail.com"}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder={role === "admin" ? "admin@desa.id" : "3520xxxxxxxxxxxx atau budi@gmail.com"}
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
                 />
               </div>
@@ -206,7 +221,7 @@ export default function LoginPage() {
           <div className="text-center pt-2">
             <p className="text-xs text-slate-500">
               Belum punya akun?{" "}
-              <Link href="/register" className="font-bold text-[#004329] hover:underline">
+              <Link href={`/register${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`} className="font-bold text-[#004329] hover:underline">
                 Daftar Akun Baru
               </Link>
             </p>
@@ -215,5 +230,17 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#004329]" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

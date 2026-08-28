@@ -254,6 +254,26 @@ CREATE POLICY "Allow public read umkm" ON public.umkm FOR SELECT USING (true);
 CREATE POLICY "Allow public read perangkat_desa" ON public.perangkat_desa FOR SELECT USING (true);
 CREATE POLICY "Allow public read profil_desa" ON public.profil_desa FOR SELECT USING (true);
 
+-- 8. TABEL 'profiles' (Profil Akun Warga & Perangkat Desa Terverifikasi NIK)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nik TEXT UNIQUE,
+  nama TEXT NOT NULL,
+  no_hp TEXT,
+  email TEXT,
+  role TEXT DEFAULT 'warga',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nik TEXT;
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow write profiles" ON public.profiles;
+CREATE POLICY "Allow public read profiles" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Allow write profiles" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
+
 -- Kebijakan Akses Tulis & Update (Insert, Update, Delete)
 CREATE POLICY "Allow write infografis" ON public.infografis FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow write opsi_surat" ON public.opsi_surat FOR ALL USING (true) WITH CHECK (true);

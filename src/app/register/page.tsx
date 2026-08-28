@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, UserRole } from "@/context/AuthContext";
-import { isValidGmail, isValidPhone, isValidPassword } from "@/utils/validators";
-import { User, Lock, Mail, Phone, ArrowRight, Store, CheckCircle2, AlertCircle, KeyRound, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
+import { isValidGmail, isValidPhone, isValidPassword, isValidNIK } from "@/utils/validators";
+import { User, Lock, Mail, Phone, ArrowRight, Store, CheckCircle2, AlertCircle, KeyRound, Eye, EyeOff, Loader2, ShieldCheck, CreditCard } from "lucide-react";
 import Link from "next/link";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get("redirect") || "";
   const { registerWithSupabase, user } = useAuth();
 
   const [role, setRole] = useState<UserRole>("warga");
+  const [nik, setNik] = useState("");
   const [nama, setNama] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -29,7 +32,7 @@ export default function RegisterPage() {
     if (user.role === "admin") {
       router.push("/admin");
     } else {
-      router.push("/");
+      router.push(redirectPath || "/");
     }
   }
 
@@ -37,9 +40,17 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
+    // NIK validation for citizen
+    if (role === "warga") {
+      if (!isValidNIK(nik)) {
+        setError("NIK wajib 16 digit angka sesuai KTP Anda.");
+        return;
+      }
+    }
+
     // Form Client Validations
     if (!nama || nama.trim().length < 2) {
-      setError("Silakan masukkan nama lengkap yang valid.");
+      setError("Silakan masukkan nama lengkap yang valid sesuai KTP.");
       return;
     }
 
@@ -49,7 +60,7 @@ export default function RegisterPage() {
     }
 
     if (!isValidPhone(phone)) {
-      setError("Silakan masukkan nomor telepon/WhatsApp yang valid.");
+      setError("Silakan masukkan nomor telepon/WhatsApp aktif yang valid.");
       return;
     }
 
@@ -71,6 +82,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     const res = await registerWithSupabase({
+      nik: role === "warga" ? nik.trim() : undefined,
       email,
       password,
       nama,
@@ -86,7 +98,7 @@ export default function RegisterPage() {
       setSuccess(true);
       setLoading(false);
       setTimeout(() => {
-        router.push(role === "admin" ? "/admin" : "/");
+        router.push(role === "admin" ? "/admin" : (redirectPath || "/"));
       }, 1200);
     }
   };
@@ -104,7 +116,7 @@ export default function RegisterPage() {
           </Link>
           <h1 className="text-2xl font-extrabold text-slate-900">Pendaftaran Akun Desa</h1>
           <p className="text-xs text-slate-500">
-            Daftarkan akun untuk mengakses layanan digital desa
+            Daftarkan NIK KTP Anda untuk mengajukan surat mandiri & layanan desa
           </p>
         </div>
 
@@ -154,6 +166,30 @@ export default function RegisterPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            
+            {/* NIK Input for Citizen */}
+            {role === "warga" && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
+                  <span>NIK KTP (16 Digit)</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                    Wajib Sesuai KTP
+                  </span>
+                </label>
+                <div className="relative">
+                  <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    maxLength={16}
+                    value={nik}
+                    onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="Contoh: 3520xxxxxxxxxxxx"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-bold tracking-wider"
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
                 Nama Lengkap
@@ -291,7 +327,7 @@ export default function RegisterPage() {
           <div className="text-center pt-2">
             <p className="text-xs text-slate-500">
               Sudah punya akun?{" "}
-              <Link href="/login" className="font-bold text-[#004329] hover:underline">
+              <Link href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`} className="font-bold text-[#004329] hover:underline">
                 Masuk di Sini
               </Link>
             </p>
@@ -300,5 +336,17 @@ export default function RegisterPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#004329]" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

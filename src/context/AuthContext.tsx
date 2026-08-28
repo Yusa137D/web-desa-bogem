@@ -8,6 +8,7 @@ export type UserRole = "admin" | "warga";
 
 export interface UserProfile {
   id?: string;
+  nik?: string;
   name: string;
   email: string;
   role: UserRole;
@@ -17,8 +18,9 @@ export interface UserProfile {
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  loginWithSupabase: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithSupabase: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   registerWithSupabase: (data: {
+    nik?: string;
     email: string;
     password: string;
     nama: string;
@@ -51,6 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const meta = supabaseUser.user_metadata || {};
     let role: UserRole = meta.role === "admin" ? "admin" : "warga";
     let name: string = meta.name || meta.nama || supabaseUser.email?.split("@")[0] || "User Desa";
+    let nik: string = meta.nik || "";
+    let phone: string = meta.phone || meta.no_hp || "";
 
     try {
       const { data: profile } = await supabase
@@ -62,6 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (profile) {
         if (profile.role) role = profile.role as UserRole;
         if (profile.nama) name = profile.nama;
+        if (profile.nik) nik = profile.nik;
+        if (profile.no_hp) phone = profile.no_hp;
       }
     } catch {
       // Ignore table error if profile table is not initialized yet
@@ -70,9 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return {
       id: supabaseUser.id,
       email: supabaseUser.email || "",
+      nik,
       name,
       role,
-      phone: meta.phone || "",
+      phone,
     };
   };
 
@@ -123,19 +130,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Secure Real Login with Supabase
-  const loginWithSupabase = async (email: string, password: string) => {
+  // Secure Real Login with Supabase (Supports Email OR NIK)
+  const loginWithSupabase = async (identifier: string, password: string) => {
     try {
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanIdentifier = identifier.trim();
+      let targetEmail = cleanIdentifier.toLowerCase();
+
+      // If user enters 16-digit NIK instead of email
+      const isNik = /^[0-9]{16}$/.test(cleanIdentifier);
+      if (isNik) {
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("nik", cleanIdentifier)
+          .maybeSingle();
+
+        if (profileErr || !profile?.email) {
+          return {
+            success: false,
+            error: "NIK tidak terdaftar sebagai akun warga. Silakan daftar terlebih dahulu.",
+          };
+        }
+        targetEmail = profile.email.toLowerCase();
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
+        email: targetEmail,
         password,
       });
 
       if (error) {
-        let errorMsg = "Gagal masuk. Periksa kembali email dan kata sandi Anda.";
+        let errorMsg = "Gagal masuk. Periksa kembali NIK/Email dan kata sandi Anda.";
         if (error.message.includes("Invalid login credentials")) {
-          errorMsg = "Email atau kata sandi tidak cocok.";
+          errorMsg = isNik ? "Kata sandi tidak cocok untuk NIK ini." : "Email atau kata sandi tidak cocok.";
         } else if (error.message.includes("Email not confirmed")) {
           errorMsg = "Alamat email belum dikonfirmasi.";
         }
@@ -156,8 +183,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Secure Register with Supabase & Role Escalation Protection
+  // Secure Register with Supabase & NIK Validation
   const registerWithSupabase = async (data: {
+    nik?: string;
     email: string;
     password: string;
     nama: string;
@@ -176,12 +204,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      const cleanNik = data.nik ? data.nik.trim() : "";
+
+      // Validate NIK for warga
+      if (data.role === "warga") {
+        if (!cleanNik || cleanNik.length !== 16 || !/^[0-9]{16}$/.test(cleanNik)) {
+          return {
+            success: false,
+            error: "NIK wajib 16 digit angka sesuai KTP.",
+          };
+        }
+
+        // Check if NIK already registered
+        try {
+          const { data: existingNik } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("nik", cleanNik)
+            .maybeSingle();
+
+          if (existingNik) {
+            return {
+              success: false,
+              error: "NIK ini sudah terdaftar di sistem desa. Silakan masuk menggunakan NIK Anda.",
+            };
+          }
+        } catch {
+          // Non-fatal if profiles table does not have RLS yet
+        }
+      }
+
       const cleanEmail = data.email.trim().toLowerCase();
       const { data: authData, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: data.password,
         options: {
           data: {
+            nik: cleanNik,
             name: data.nama,
             phone: data.phone,
             role: data.role,
@@ -202,13 +261,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Try inserting to profiles table
       if (authData.user) {
         try {
-          await supabase.from("profiles").insert([
+          await supabase.from("profiles").upsert([
             {
               id: authData.user.id,
+              nik: cleanNik,
               email: cleanEmail,
               nama: data.nama,
               no_hp: data.phone,
               role: data.role,
+              updated_at: new Date().toISOString(),
             },
           ]);
         } catch {
@@ -217,6 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const profile: UserProfile = {
           id: authData.user.id,
+          nik: cleanNik,
           email: cleanEmail,
           name: data.nama,
           role: data.role,
@@ -236,9 +298,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const demoLogin = (role: UserRole) => {
     const demoProfile: UserProfile = {
       id: role === "admin" ? "demo-admin-id" : "demo-warga-id",
+      nik: role === "warga" ? "3520012345670001" : undefined,
       email: role === "admin" ? "admin@desa.id" : "warga@desa.id",
-      name: role === "admin" ? "Admin Desa" : "Warga Desa",
+      name: role === "admin" ? "Admin Desa" : "Budi Santoso (Warga)",
       role: role,
+      phone: "081234567890",
     };
     setUser(demoProfile);
     localStorage.setItem("desa_demo_user", JSON.stringify(demoProfile));

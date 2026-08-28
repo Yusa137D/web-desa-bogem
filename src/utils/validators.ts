@@ -22,3 +22,12 @@ export function isValidPhone(phone: string): boolean {
 export function isValidPassword(password: string): boolean {
   return typeof password === "string" && password.length >= 6;
 }
+
+/**
+ * Checks valid 16-digit Indonesian NIK KTP format
+ */
+export function isValidNIK(nik: string): boolean {
+  if (!nik) return false;
+  const clean = nik.trim();
+  return /^[0-9]{16}$/.test(clean);
+}
