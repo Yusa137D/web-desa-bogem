@@ -274,6 +274,34 @@ DROP POLICY IF EXISTS "Allow write profiles" ON public.profiles;
 CREATE POLICY "Allow public read profiles" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Allow write profiles" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
 
+-- 9. TRIGGER OTOMATIS: Sinkronisasi Akun dari auth.users ke public.profiles
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, nama, nik, no_hp, role)
+  VALUES (
+    new.id,
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'nama', split_part(new.email, '@', 1)),
+    new.raw_user_meta_data->>'nik',
+    new.raw_user_meta_data->>'phone',
+    COALESCE(new.raw_user_meta_data->>'role', 'warga')
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    nama = EXCLUDED.nama,
+    nik = EXCLUDED.nik,
+    no_hp = EXCLUDED.no_hp,
+    role = EXCLUDED.role,
+    updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT OR UPDATE ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 -- Kebijakan Akses Tulis & Update (Insert, Update, Delete)
 CREATE POLICY "Allow write infografis" ON public.infografis FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow write opsi_surat" ON public.opsi_surat FOR ALL USING (true) WITH CHECK (true);
