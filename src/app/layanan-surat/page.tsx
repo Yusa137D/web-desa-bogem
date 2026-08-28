@@ -313,19 +313,6 @@ export default function LayananSuratPage() {
                     <span>Daftar Akun Baru</span>
                   </Link>
                 </div>
-
-                <div className="pt-4 border-t border-slate-100 max-w-sm mx-auto">
-                  <span className="text-[11px] text-slate-400 block mb-2 font-medium">
-                    Ingin mencoba sistem tanpa mendaftar?
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => demoLogin("warga")}
-                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold py-2 px-4 rounded-xl border border-emerald-200 transition inline-flex items-center space-x-1.5 active:scale-95"
-                  >
-                    <span>👤 Masuk Cepat sebagai Demo Warga</span>
-                  </button>
-                </div>
               </div>
             ) : (
               /* FORM SHOWN WHEN USER IS LOGGED IN */

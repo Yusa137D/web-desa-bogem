@@ -2,9 +2,9 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth, UserRole } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { isValidGmail, isValidPhone, isValidPassword, isValidNIK } from "@/utils/validators";
-import { User, Lock, Mail, Phone, ArrowRight, Store, CheckCircle2, AlertCircle, KeyRound, Eye, EyeOff, Loader2, ShieldCheck, CreditCard } from "lucide-react";
+import { User, Lock, Mail, Phone, ArrowRight, Store, CheckCircle2, AlertCircle, Eye, EyeOff, Loader2, CreditCard } from "lucide-react";
 import Link from "next/link";
 
 function RegisterForm() {
@@ -13,14 +13,12 @@ function RegisterForm() {
   const redirectPath = searchParams.get("redirect") || "";
   const { registerWithSupabase, user } = useAuth();
 
-  const [role, setRole] = useState<UserRole>("warga");
   const [nik, setNik] = useState("");
   const [nama, setNama] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [adminSecret, setAdminSecret] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const [error, setError] = useState("");
@@ -40,12 +38,10 @@ function RegisterForm() {
     e.preventDefault();
     setError("");
 
-    // NIK validation for citizen
-    if (role === "warga") {
-      if (!isValidNIK(nik)) {
-        setError("NIK wajib 16 digit angka sesuai KTP Anda.");
-        return;
-      }
+    // NIK validation
+    if (!isValidNIK(nik)) {
+      setError("NIK wajib 16 digit angka sesuai KTP Anda.");
+      return;
     }
 
     // Form Client Validations
@@ -74,21 +70,15 @@ function RegisterForm() {
       return;
     }
 
-    if (role === "admin" && !adminSecret) {
-      setError("Kode Rahasia Admin Desa wajib diisi untuk mendaftar sebagai Admin.");
-      return;
-    }
-
     setLoading(true);
 
     const res = await registerWithSupabase({
-      nik: role === "warga" ? nik.trim() : undefined,
+      nik: nik.trim(),
       email,
       password,
       nama,
       phone,
-      role,
-      adminSecret,
+      role: "warga",
     });
 
     if (!res.success) {
@@ -98,7 +88,7 @@ function RegisterForm() {
       setSuccess(true);
       setLoading(false);
       setTimeout(() => {
-        router.push(role === "admin" ? "/admin" : (redirectPath || "/"));
+        router.push(redirectPath || "/");
       }, 1200);
     }
   };
@@ -114,42 +104,14 @@ function RegisterForm() {
               <Store className="w-6 h-6 text-emerald-300" />
             </div>
           </Link>
-          <h1 className="text-2xl font-extrabold text-slate-900">Pendaftaran Akun Desa</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900">Pendaftaran Akun Warga</h1>
           <p className="text-xs text-slate-500">
-            Daftarkan NIK KTP Anda untuk mengajukan surat mandiri & layanan desa
+            Daftarkan NIK KTP Anda untuk mengajukan surat mandiri & layanan digital desa
           </p>
         </div>
 
         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/80 space-y-6">
           
-          {/* Role Selector */}
-          <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setRole("warga")}
-              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
-                role === "warga"
-                  ? "bg-white text-[#004329] shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span>Warga Desa</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("admin")}
-              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
-                role === "admin"
-                  ? "bg-[#004329] text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Admin Desa</span>
-            </button>
-          </div>
-
           {success && (
             <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
@@ -167,29 +129,28 @@ function RegisterForm() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* NIK Input for Citizen */}
-            {role === "warga" && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
-                  <span>NIK KTP (16 Digit)</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-                    Wajib Sesuai KTP
-                  </span>
-                </label>
-                <div className="relative">
-                  <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    maxLength={16}
-                    value={nik}
-                    onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, ""))}
-                    placeholder="Contoh: 3520xxxxxxxxxxxx"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-bold tracking-wider"
-                  />
-                </div>
+            {/* NIK Input */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
+                <span>NIK KTP (16 Digit)</span>
+                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                  Wajib Sesuai KTP
+                </span>
+              </label>
+              <div className="relative">
+                <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  maxLength={16}
+                  value={nik}
+                  onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="Contoh: 3520xxxxxxxxxxxx"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-bold tracking-wider"
+                />
               </div>
-            )}
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
                 Nama Lengkap
@@ -241,29 +202,6 @@ function RegisterForm() {
               </div>
             </div>
 
-            {/* Secret key input if registering as Admin */}
-            {role === "admin" && (
-              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
-                <label className="block text-xs font-bold text-amber-900 uppercase">
-                  Kode Rahasia Admin Desa
-                </label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-600" />
-                  <input
-                    type="password"
-                    required
-                    value={adminSecret}
-                    onChange={(e) => setAdminSecret(e.target.value)}
-                    placeholder="Masukkan PIN / Kode Rahasia Admin"
-                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs text-slate-800 font-bold"
-                  />
-                </div>
-                <p className="text-[11px] text-amber-800">
-                  *Gunakan kode rahasia demo: <code className="font-bold bg-amber-200/60 px-1 py-0.5 rounded">DESA-ADMIN-2026</code>
-                </p>
-              </div>
-            )}
-
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
                 Kata Sandi
@@ -308,7 +246,7 @@ function RegisterForm() {
             <button
               type="submit"
               disabled={loading || success}
-              className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md mt-2 disabled:opacity-70"
+              className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md mt-2 disabled:opacity-70 active:scale-95"
             >
               {loading ? (
                 <>
@@ -317,16 +255,16 @@ function RegisterForm() {
                 </>
               ) : (
                 <>
-                  <span>Daftar Akun {role === "admin" ? "Admin" : "Warga"} Sekarang</span>
+                  <span>Daftar Akun Warga Sekarang</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          <div className="text-center pt-2">
+          <div className="text-center pt-2 border-t border-slate-100">
             <p className="text-xs text-slate-500">
-              Sudah punya akun?{" "}
+              Sudah punya akun warga?{" "}
               <Link href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`} className="font-bold text-[#004329] hover:underline">
                 Masuk di Sini
               </Link>

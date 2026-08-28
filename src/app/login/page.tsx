@@ -2,18 +2,17 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth, UserRole } from "@/context/AuthContext";
-import { isValidGmail, isValidNIK } from "@/utils/validators";
-import { ShieldCheck, User, Lock, Mail, ArrowRight, Store, AlertCircle, Eye, EyeOff, Loader2, CreditCard } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { isValidGmail } from "@/utils/validators";
+import { User, Lock, Mail, ArrowRight, Store, AlertCircle, Eye, EyeOff, Loader2, CreditCard } from "lucide-react";
 import Link from "next/link";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "";
-  const { loginWithSupabase, demoLogin, user } = useAuth();
+  const { loginWithSupabase, user } = useAuth();
 
-  const [role, setRole] = useState<UserRole>("warga");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -36,16 +35,9 @@ function LoginForm() {
     const clean = identifier.trim();
     const isNik = /^[0-9]{16}$/.test(clean);
 
-    if (role === "warga") {
-      if (!isNik && !isValidGmail(clean)) {
-        setError("Masukkan 16 digit NIK KTP atau Alamat Email @gmail.com yang valid.");
-        return;
-      }
-    } else {
-      if (!clean.includes("@")) {
-        setError("Masukkan alamat email admin yang valid.");
-        return;
-      }
+    if (!isNik && !isValidGmail(clean) && !clean.includes("@")) {
+      setError("Masukkan 16 digit NIK KTP atau Alamat Email yang valid.");
+      return;
     }
 
     if (!password || password.length < 6) {
@@ -58,19 +50,10 @@ function LoginForm() {
     const res = await loginWithSupabase(clean, password);
 
     if (!res.success) {
-      setError(res.error || "Gagal masuk. Silakan coba lagi.");
+      setError(res.error || "Gagal masuk. Silakan periksa kembali data Anda.");
       setLoading(false);
     } else {
       setLoading(false);
-      router.push(role === "admin" ? "/admin" : (redirectPath || "/"));
-    }
-  };
-
-  const handleQuickLogin = (selectedRole: UserRole) => {
-    demoLogin(selectedRole);
-    if (selectedRole === "admin") {
-      router.push("/admin");
-    } else {
       router.push(redirectPath || "/");
     }
   };
@@ -86,42 +69,14 @@ function LoginForm() {
               <Store className="w-6 h-6 text-emerald-300" />
             </div>
           </Link>
-          <h1 className="text-2xl font-extrabold text-slate-900">Masuk ke Portal Desa</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900">Masuk Akun Warga</h1>
           <p className="text-xs text-slate-500">
-            Masuk dengan NIK KTP / Email Warga atau Akun Perangkat Desa
+            Masuk dengan NIK KTP (16 Digit) atau Alamat Email terdaftar
           </p>
         </div>
 
         <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/80 space-y-6">
           
-          {/* Role Selector Tabs */}
-          <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setRole("warga")}
-              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
-                role === "warga"
-                  ? "bg-white text-[#004329] shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span>Warga Desa</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("admin")}
-              className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition ${
-                role === "admin"
-                  ? "bg-[#004329] text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Admin Desa</span>
-            </button>
-          </div>
-
           {error && (
             <div className="p-3.5 bg-rose-50 text-rose-700 rounded-2xl border border-rose-200 text-xs font-medium flex items-center space-x-2.5 animate-in fade-in">
               <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
@@ -132,21 +87,20 @@ function LoginForm() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                {role === "warga" ? "NIK KTP (16 Digit) atau Email" : "Alamat Email Admin"}
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
+                <span>NIK KTP atau Alamat Email</span>
+                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                  16 Digit / Email
+                </span>
               </label>
               <div className="relative">
-                {role === "warga" ? (
-                  <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                ) : (
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                )}
+                <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
                   required
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder={role === "admin" ? "admin@desa.id" : "3520xxxxxxxxxxxx atau budi@gmail.com"}
+                  placeholder="Contoh: 3520xxxxxxxxxxxx atau budi@gmail.com"
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
                 />
               </div>
@@ -179,48 +133,25 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md mt-2 disabled:opacity-70"
+              className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md mt-2 disabled:opacity-70 active:scale-95"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Memeriksa Akses...</span>
+                  <span>Memeriksa Akun...</span>
                 </>
               ) : (
                 <>
-                  <span>Masuk sebagai {role === "admin" ? "Admin" : "Warga"}</span>
+                  <span>Masuk ke Akun Warga</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Quick Demo Login Option */}
-          <div className="pt-4 border-t border-slate-100 space-y-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block text-center">
-              Uji Coba Langsung (Demo Mode)
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("warga")}
-                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-emerald-200/60 transition flex items-center justify-center space-x-1"
-              >
-                <span>👤 Demo Warga</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("admin")}
-                className="bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-amber-200/60 transition flex items-center justify-center space-x-1"
-              >
-                <span>🛡️ Demo Admin</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="text-center pt-2">
+          <div className="text-center pt-2 border-t border-slate-100">
             <p className="text-xs text-slate-500">
-              Belum punya akun?{" "}
+              Belum punya akun warga?{" "}
               <Link href={`/register${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`} className="font-bold text-[#004329] hover:underline">
                 Daftar Akun Baru
               </Link>
