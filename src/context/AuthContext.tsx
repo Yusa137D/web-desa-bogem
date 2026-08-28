@@ -26,8 +26,7 @@ interface AuthContextType {
     nama: string;
     phone: string;
     role: UserRole;
-    adminSecret?: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   logout: () => Promise<void>;
   demoLogin: (role: UserRole) => void;
 }
@@ -192,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     phone: string;
     role: UserRole;
     adminSecret?: string;
-  }) => {
+  }): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
     try {
       // Validate Admin Secret Code if requesting Admin Role
       if (data.role === "admin") {
@@ -255,7 +254,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else if (error.message.includes("Password should be at least")) {
           errorMsg = "Kata sandi minimal 6 karakter.";
         } else if (error.message.toLowerCase().includes("rate limit") || error.message.toLowerCase().includes("exceeded")) {
-          errorMsg = "Batas pengiriman email Supabase tercapai. Harap nonaktifkan 'Confirm email' di dashboard Supabase agar pendaftaran warga bisa langsung aktif tanpa verifikasi email.";
+          errorMsg = "Batas pengiriman email Supabase tercapai. Harap nonaktifkan 'Confirm email' di dashboard Supabase atau aktifkan Custom SMTP.";
         }
         return { success: false, error: errorMsg };
       }
@@ -278,18 +277,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Table insert failure is non-fatal if profiles table isn't created yet
         }
 
-        const profile: UserProfile = {
-          id: authData.user.id,
-          nik: cleanNik,
-          email: cleanEmail,
-          name: data.nama,
-          role: data.role,
-          phone: data.phone,
-        };
-        setUser(profile);
+        // Check if user session was created immediately or requires email confirmation
+        const needsConfirmation = !authData.session;
+
+        if (!needsConfirmation) {
+          const profile: UserProfile = {
+            id: authData.user.id,
+            nik: cleanNik,
+            email: cleanEmail,
+            name: data.nama,
+            role: data.role,
+            phone: data.phone,
+          };
+          setUser(profile);
+          return { success: true, needsEmailConfirmation: false };
+        } else {
+          return { success: true, needsEmailConfirmation: true };
+        }
       }
 
-      return { success: true };
+      return { success: true, needsEmailConfirmation: false };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat mendaftar.";
       return { success: false, error: msg };
