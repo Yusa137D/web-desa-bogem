@@ -12,11 +12,14 @@ import {
   AlertCircle,
 } from "lucide-react";
 
+import { useAuth } from "@/context/AuthContext";
+
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { user, loginWithSupabase, logout } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isMounted, setIsMounted] = useState<boolean>(false);
 
@@ -29,14 +32,14 @@ export default function AdminLayout({
 
   useEffect(() => {
     setIsMounted(true);
-    // Check if session exists in localStorage
+    // Check if user is logged in as admin via AuthContext or local session
     const session = localStorage.getItem("bogem_admin_session");
-    if (session === "true") {
+    if (user?.role === "admin" || session === "true") {
       setIsAuthenticated(true);
     }
-  }, []);
+  }, [user]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
     setLoading(true);
@@ -45,28 +48,42 @@ export default function AdminLayout({
     const cleanPass = passwordInput.trim();
 
     // Check credentials:
-    // Email/Username: "admindesabogem@gmail.com" or "admindesabogem"
-    // Password: "Bogem241"
-    const validUsername =
-      cleanUser === "admindesabogem@gmail.com" ||
-      cleanUser === "admindesabogem" ||
-      cleanUser === "admindesabogem@desa.id";
-    const validPassword = cleanPass === "Bogem241";
+    // 1. Check fallback master key:
+    const isMasterKey =
+      (cleanUser === "admindesabogem@gmail.com" ||
+        cleanUser === "admindesabogem" ||
+        cleanUser === "admindesabogem@desa.id" ||
+        cleanUser === "admin@desa.id") &&
+      cleanPass === "Bogem241";
 
-    setTimeout(() => {
-      if (validUsername && validPassword) {
+    if (isMasterKey) {
+      localStorage.setItem("bogem_admin_session", "true");
+      setIsAuthenticated(true);
+      setErrorMsg("");
+      setLoading(false);
+      return;
+    }
+
+    // 2. Check Supabase Cloud Auth for real Admin users
+    try {
+      const res = await loginWithSupabase(cleanUser, cleanPass);
+      if (res.success) {
         localStorage.setItem("bogem_admin_session", "true");
         setIsAuthenticated(true);
         setErrorMsg("");
       } else {
-        setErrorMsg("Email atau kata sandi tidak sesuai. Silakan periksa kembali.");
+        setErrorMsg("Email atau kata sandi admin tidak sesuai. Silakan periksa kembali.");
       }
+    } catch {
+      setErrorMsg("Gagal memverifikasi akun admin. Periksa koneksi internet Anda.");
+    } finally {
       setLoading(false);
-    }, 400);
+    }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem("bogem_admin_session");
+    await logout();
     setIsAuthenticated(false);
     setEmailInput("");
     setPasswordInput("");

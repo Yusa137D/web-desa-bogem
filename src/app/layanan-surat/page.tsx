@@ -36,6 +36,7 @@ import {
   fetchSuratList,
 } from "@/services/suratService";
 import { formatDateIndonesian } from "@/utils/formatters";
+import { supabase } from "@/lib/supabase";
 
 function GoogleIcon() {
   return (
@@ -213,6 +214,22 @@ export default function LayananSuratPage() {
       setSuccessTicket(res.data);
       setDynamicValues({});
       if (user) {
+        // Sync NIK and Phone to user profile if previously empty (e.g. Google OAuth login)
+        if (user.id && (!user.nik || user.nik !== nik)) {
+          supabase
+            .from("profiles")
+            .upsert([
+              {
+                id: user.id,
+                nik: nik.trim(),
+                nama: namaLengkap,
+                no_hp: noWhatsapp,
+                email: user.email || email,
+                updated_at: new Date().toISOString(),
+              },
+            ])
+            .then(() => {});
+        }
         loadMyLetters();
       }
     }
