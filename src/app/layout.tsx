@@ -11,7 +11,7 @@ import { AuthProvider } from "@/context/AuthContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Web Desa Bogem | Kec. Kawedanan, Kab. Magetan",
+  title: "Desa Bogem | Kec. Kawedanan, Kab. Magetan",
   description: "Website Resmi Pemerintah Desa Bogem, Kecamatan Kawedanan, Kabupaten Magetan - Layanan Informasi Publik & UMKM",
 };
 

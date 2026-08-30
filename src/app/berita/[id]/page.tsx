@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!berita) {
     return {
-      title: "Warta Tidak Ditemukan | Web Desa Bogem",
+      title: "Warta Tidak Ditemukan | Desa Bogem",
       description: "Artikel warta atau pengumuman desa tidak ditemukan.",
     };
   }
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const cleanDescription = berita.ringkasan || berita.konten.slice(0, 160).replace(/\n/g, " ");
 
   return {
-    title: `${berita.judul} | Web Desa Bogem`,
+    title: `${berita.judul} | Desa Bogem`,
     description: cleanDescription,
     openGraph: {
       title: berita.judul,
@@ -58,7 +58,28 @@ export default async function DetailBeritaPage({ params }: PageProps) {
   ]);
 
   if (!berita) {
-    notFound();
+    return (
+      <main className="min-h-screen bg-[#F8FAFC] pb-28 pt-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+        <div className="max-w-md w-full text-center bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-slate-200/80 space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto border border-emerald-100">
+            <Newspaper className="w-7 h-7 text-emerald-700" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">Warta Tidak Ditemukan</h1>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Berita atau pengumuman yang Anda cari mungkin telah diperbarui, dipindahkan, atau belum dipublikasikan.
+          </p>
+          <div className="pt-2">
+            <Link
+              href="/berita"
+              className="inline-flex items-center space-x-2 bg-[#063321] hover:bg-[#073d28] text-white font-bold text-xs px-5 py-3 rounded-xl transition shadow-sm active:scale-95"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Kembali ke Halaman Berita</span>
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   const otherNews = allNews

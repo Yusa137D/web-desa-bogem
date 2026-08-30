@@ -28,22 +28,31 @@ export async function fetchBeritaById(id: string | number): Promise<BeritaItem |
   try {
     if (!supabase) return null;
 
-    const cleanId = decodeURIComponent(String(id));
+    const cleanId = decodeURIComponent(String(id)).trim();
+
+    // 1. Direct query by ID
     const { data, error } = await supabase
       .from("berita")
       .select("id, judul, kategori, penulis, ringkasan, konten, gambar, created_at")
       .eq("id", cleanId)
       .maybeSingle();
 
-    if (error) {
-      console.error("fetchBeritaById error:", error.message);
-      return null;
+    if (!error && data) {
+      return data;
     }
 
-    return data || null;
+    // 2. Fallback: Search in full list in case ID types or string formatting differ
+    const all = await fetchBeritaList();
+    const found = all.find((item) => String(item.id) === cleanId);
+    return found || null;
   } catch (err) {
     console.error("fetchBeritaById exception:", err);
-    return null;
+    try {
+      const all = await fetchBeritaList();
+      return all.find((item) => String(item.id) === decodeURIComponent(String(id)).trim()) || null;
+    } catch {
+      return null;
+    }
   }
 }
 

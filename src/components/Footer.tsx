@@ -41,7 +41,7 @@ export default function Footer() {
                 />
               </div>
               <div>
-                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Web Desa Bogem</h3>
+                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Desa Bogem</h3>
                 <p className="text-xs text-emerald-300/90">Kec. Kawedanan, Kab. Magetan</p>
               </div>
             </div>

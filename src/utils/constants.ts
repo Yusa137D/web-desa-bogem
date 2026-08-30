@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-  name: "Web Desa Bogem",
+  name: "Desa Bogem",
   subTitle: "Website Resmi Pemerintah Desa Bogem, Kec. Kawedanan, Kab. Magetan",
   fullAddress: "Jl. Bakti Mulya No. 241, Desa Bogem, Kec. Kawedanan, Kab. Magetan, Jawa Timur 63382",
   phone: "+62 812-3456-7890",
