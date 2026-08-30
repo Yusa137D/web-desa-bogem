@@ -165,9 +165,17 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                Kata Sandi
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase">
+                  Kata Sandi
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline"
+                >
+                  Lupa kata sandi?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input

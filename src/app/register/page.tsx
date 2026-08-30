@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { isValidGmail, isValidPhone, isValidPassword, isValidNIK } from "@/utils/validators";
+import { isValidGmail, isValidPhone, isValidPassword, isValidNIK, validatePassword } from "@/utils/validators";
 import { User, Lock, Mail, Phone, ArrowRight, Store, CheckCircle2, AlertCircle, Eye, EyeOff, Loader2, CreditCard, MailCheck, RefreshCw, LogIn } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -44,6 +44,8 @@ function RegisterForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const passReqs = validatePassword(password);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -88,8 +90,8 @@ function RegisterForm() {
       return;
     }
 
-    if (!isValidPassword(password)) {
-      setError("Kata sandi minimal 6 karakter.");
+    if (!passReqs.isValid) {
+      setError("Kata sandi wajib minimal 8 karakter dan merupakan kombinasi huruf besar (A-Z), huruf kecil (a-z), dan angka (0-9).");
       return;
     }
 
@@ -351,7 +353,7 @@ function RegisterForm() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Minimal 6 karakter"
+                      placeholder="Min. 8 karakter, huruf besar, kecil, angka"
                       className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
                     />
                     <button
@@ -363,6 +365,29 @@ function RegisterForm() {
                     </button>
                   </div>
                 </div>
+
+                {/* Password Complexity Checklist */}
+                {password.length > 0 && (
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-1.5 animate-in fade-in duration-200">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                      Kriteria Keamanan Kata Sandi:
+                    </span>
+                    <div className="grid grid-cols-2 gap-1 text-[11px]">
+                      <div className={`flex items-center space-x-1.5 ${passReqs.hasMinLength ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
+                        <span>{passReqs.hasMinLength ? "✓" : "○"} Min. 8 Karakter</span>
+                      </div>
+                      <div className={`flex items-center space-x-1.5 ${passReqs.hasUpperCase ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
+                        <span>{passReqs.hasUpperCase ? "✓" : "○"} Huruf Besar (A-Z)</span>
+                      </div>
+                      <div className={`flex items-center space-x-1.5 ${passReqs.hasLowerCase ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
+                        <span>{passReqs.hasLowerCase ? "✓" : "○"} Huruf Kecil (a-z)</span>
+                      </div>
+                      <div className={`flex items-center space-x-1.5 ${passReqs.hasNumber ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
+                        <span>{passReqs.hasNumber ? "✓" : "○"} Angka (0-9)</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
