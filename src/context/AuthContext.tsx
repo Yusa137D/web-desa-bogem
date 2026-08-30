@@ -19,6 +19,7 @@ interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
   loginWithSupabase: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (redirectPath?: string) => Promise<{ success: boolean; error?: string }>;
   registerWithSupabase: (data: {
     nik?: string;
     email: string;
@@ -26,6 +27,7 @@ interface AuthContextType {
     nama: string;
     phone: string;
     role: UserRole;
+    adminSecret?: string;
   }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   logout: () => Promise<void>;
   demoLogin: (role: UserRole) => void;
@@ -38,6 +40,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   loginWithSupabase: async () => ({ success: false }),
+  loginWithGoogle: async () => ({ success: false }),
   registerWithSupabase: async () => ({ success: false }),
   logout: async () => {},
   demoLogin: () => {},
@@ -305,6 +308,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // 1-Click Google OAuth Sign-in
+  const loginWithGoogle = async (redirectPath?: string) => {
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const redirectTo = `${origin}/auth/callback${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`;
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account",
+          },
+        },
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menghubungkan ke layanan Google.";
+      return { success: false, error: msg };
+    }
+  };
+
   // Demo mode login for testing offline or presentation
   const demoLogin = (role: UserRole) => {
     const demoProfile: UserProfile = {
@@ -335,6 +365,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         loginWithSupabase,
+        loginWithGoogle,
         registerWithSupabase,
         logout,
         demoLogin,
