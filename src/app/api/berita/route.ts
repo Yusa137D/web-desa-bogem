@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchBeritaList, createBerita, updateBerita, deleteBerita } from "@/services/beritaService";
+import { verifyAdminSession } from "@/lib/auth/serverAuth";
 
 export async function GET() {
   try {
@@ -13,6 +14,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const authCheck = await verifyAdminSession();
+    if (!authCheck.isAdmin) {
+      return NextResponse.json({ success: false, error: authCheck.error }, { status: 403 });
+    }
+
     const body = await request.json();
     const result = await createBerita(body);
 
@@ -29,6 +35,11 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const authCheck = await verifyAdminSession();
+    if (!authCheck.isAdmin) {
+      return NextResponse.json({ success: false, error: authCheck.error }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {
@@ -51,15 +62,19 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    const judul = searchParams.get("judul");
-
-    if (!id && !judul) {
-      return NextResponse.json({ success: false, error: "Missing id or judul" }, { status: 400 });
+    const authCheck = await verifyAdminSession();
+    if (!authCheck.isAdmin) {
+      return NextResponse.json({ success: false, error: authCheck.error }, { status: 403 });
     }
 
-    const result = await deleteBerita(id || "", judul || undefined);
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Missing id parameter" }, { status: 400 });
+    }
+
+    const result = await deleteBerita(id);
     return NextResponse.json({ success: result.success });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Failed to delete Berita";

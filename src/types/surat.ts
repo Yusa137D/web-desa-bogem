@@ -98,6 +98,8 @@ export const defaultOpsiSuratList: OpsiSurat[] = [
 
 export interface PermohonanSurat {
   id: string; // Kode Tiket e.g. "SRT-202508-4921"
+  user_id?: string;
+  opsi_surat_id?: string;
   nik: string;
   nama_lengkap: string;
   no_whatsapp: string;

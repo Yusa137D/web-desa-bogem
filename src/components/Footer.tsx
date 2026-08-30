@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Phone, Mail, Clock, MapPin, Heart } from "lucide-react";
-import { getLocalProfil, fetchProfilDesa, defaultProfilDesa } from "@/services/profilService";
+import { fetchProfilDesa, defaultProfilDesa } from "@/services/profilService";
 import { ProfilDesaData } from "@/types/profil";
 
 export default function Footer() {
@@ -12,27 +12,9 @@ export default function Footer() {
   const [profil, setProfil] = useState<ProfilDesaData>(defaultProfilDesa);
 
   useEffect(() => {
-    // 1. Initial local cached data
-    const local = getLocalProfil();
-    if (local) setProfil(local);
-
-    // 2. Fetch latest data from database
     fetchProfilDesa().then((data) => {
       if (data) setProfil(data);
-    });
-
-    // 3. Listen to local storage & custom updates
-    const handleUpdate = () => {
-      setProfil(getLocalProfil());
-    };
-
-    window.addEventListener("local_profil_updated", handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-
-    return () => {
-      window.removeEventListener("local_profil_updated", handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-    };
+    }).catch(() => {});
   }, []);
 
   // Hide public footer inside admin panel
@@ -44,7 +26,7 @@ export default function Footer() {
   const cleanPhone = rawPhone.replace(/[^0-9+]/g, "");
 
   return (
-    <footer className="bg-[#002517] text-emerald-100 border-t border-emerald-900/60 pb-28 md:pb-8 pt-12">
+    <footer className="bg-[#05281a] text-emerald-100/90 border-t border-emerald-900/60 pb-28 md:pb-8 pt-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
           
@@ -59,32 +41,32 @@ export default function Footer() {
                 />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white tracking-wide">Web Desa Bogem</h3>
-                <p className="text-xs text-emerald-300">Kec. Kawedanan, Kab. Magetan</p>
+                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Web Desa Bogem</h3>
+                <p className="text-xs text-emerald-300/90">Kec. Kawedanan, Kab. Magetan</p>
               </div>
             </div>
-            <p className="text-sm text-emerald-200/80 leading-relaxed">
-              Website Resmi Layanan Informasi Publik & Promosi Produk UMKM Warga Desa Bogem.
+            <p className="text-xs sm:text-sm text-emerald-200/80 leading-relaxed">
+              Website Resmi Layanan Informasi Publik, Administrasi Persuratan & Promosi Produk UMKM Warga Desa Bogem.
             </p>
           </div>
 
           {/* Column 2: Kontak Kantor Desa */}
           <div className="space-y-3">
-            <h4 className="text-base font-bold text-white uppercase tracking-wider text-emerald-400">Kontak Kantor Desa</h4>
-            <ul className="space-y-2.5 text-sm text-emerald-200/90">
+            <h4 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider text-emerald-300">Kontak Kantor Desa</h4>
+            <ul className="space-y-2.5 text-xs sm:text-sm text-emerald-200/90">
               <li className="flex items-start space-x-2.5">
                 <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span>{profil.alamat_kantor || "Jl. Bakti Mulya No. 241, Desa Bogem, Kec. Kawedanan, Kab. Magetan"}</span>
+                <span className="leading-relaxed">{profil.alamat_kantor || "Jl. Bakti Mulya No. 241, Desa Bogem, Kec. Kawedanan, Kab. Magetan"}</span>
               </li>
               <li className="flex items-center space-x-2.5">
                 <Phone className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <a href={`tel:${cleanPhone}`} className="hover:text-emerald-300 transition">
+                <a href={`tel:${cleanPhone}`} className="hover:text-white transition">
                   {rawPhone}
                 </a>
               </li>
               <li className="flex items-center space-x-2.5">
                 <Mail className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <a href={`mailto:${profil.email_kantor || "info@desabogem.id"}`} className="hover:text-emerald-300 transition">
+                <a href={`mailto:${profil.email_kantor || "info@desabogem.id"}`} className="hover:text-white transition">
                   {profil.email_kantor || "info@desabogem.id"}
                 </a>
               </li>
@@ -93,14 +75,14 @@ export default function Footer() {
 
           {/* Column 3: Jam Pelayanan */}
           <div className="space-y-3">
-            <h4 className="text-base font-bold text-white uppercase tracking-wider text-emerald-400">Jam Pelayanan Kantor</h4>
-            <div className="space-y-2 text-sm text-emerald-200/90">
+            <h4 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider text-emerald-300">Jam Pelayanan Kantor</h4>
+            <div className="space-y-2 text-xs sm:text-sm text-emerald-200/90">
               <div className="flex items-center space-x-2">
                 <Clock className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                 <span>{profil.jam_pelayanan || "Senin - Jumat: 08.00 - 15.00 WIB"}</span>
               </div>
               {profil.jam_pelayanan_note && (
-                <div className="flex items-center space-x-2 text-emerald-400/70 text-xs mt-2">
+                <div className="flex items-center space-x-2 text-emerald-400/80 text-xs mt-2">
                   <span>{profil.jam_pelayanan_note}</span>
                 </div>
               )}
@@ -109,28 +91,28 @@ export default function Footer() {
 
           {/* Column 4: Navigasi Halaman */}
           <div className="space-y-3">
-            <h4 className="text-base font-bold text-white uppercase tracking-wider text-emerald-400">Navigasi Halaman</h4>
-            <ul className="space-y-2 text-sm">
+            <h4 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider text-emerald-300">Navigasi Cepat</h4>
+            <ul className="space-y-2 text-xs sm:text-sm">
               <li>
-                <Link href="/" className="hover:text-emerald-300 transition">Beranda</Link>
+                <Link href="/" className="hover:text-white transition">Beranda</Link>
               </li>
               <li>
-                <Link href="/profil" className="hover:text-emerald-300 transition">Profil Desa</Link>
+                <Link href="/profil" className="hover:text-white transition">Profil Desa</Link>
               </li>
               <li>
-                <Link href="/pemerintah" className="hover:text-emerald-300 transition">Pemerintah & SOTK</Link>
+                <Link href="/pemerintah" className="hover:text-white transition">Pemerintah & SOTK</Link>
               </li>
               <li>
-                <Link href="/infografis" className="hover:text-emerald-300 transition">Infografis & IDM</Link>
+                <Link href="/infografis" className="hover:text-white transition">Infografis & IDM</Link>
               </li>
               <li>
-                <Link href="/berita" className="hover:text-emerald-300 transition">Kabar Berita</Link>
+                <Link href="/berita" className="hover:text-white transition">Kabar Berita</Link>
               </li>
               <li>
-                <Link href="/potensi" className="hover:text-emerald-300 transition font-medium text-emerald-300">Beli dari Desa (UMKM)</Link>
+                <Link href="/potensi" className="hover:text-white transition font-medium text-emerald-300">Beli dari Desa (UMKM)</Link>
               </li>
               <li>
-                <Link href="/layanan-surat" className="hover:text-emerald-300 transition font-bold text-emerald-300">Layanan Surat Online</Link>
+                <Link href="/layanan-surat" className="hover:text-white transition font-semibold text-emerald-300">Layanan Surat Online</Link>
               </li>
             </ul>
           </div>
@@ -139,10 +121,9 @@ export default function Footer() {
 
         {/* Bottom Copyright */}
         <div className="pt-6 border-t border-emerald-900/60 flex flex-col md:flex-row items-center justify-between text-xs text-emerald-400/80 gap-2">
-          <p>© {new Date().getFullYear()} Pemerintah Desa Bogem, Magetan. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Pemerintah Desa Bogem, Magetan. Hak Cipta Dilindungi.</p>
           <div className="flex items-center space-x-1">
-            <span>Dibuat untuk Kemajuan Desa</span>
-            <Heart className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400 inline" />
+            <span>Portal Resmi Layanan Masyarakat Desa</span>
           </div>
         </div>
       </div>

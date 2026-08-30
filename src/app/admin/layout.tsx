@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  ShieldCheck,
   Lock,
   ArrowLeft,
   Eye,
   EyeOff,
   LogOut,
   AlertCircle,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react";
-
 import { useAuth } from "@/context/AuthContext";
 
 export default function AdminLayout({
@@ -19,9 +20,8 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loginWithSupabase, logout } = useAuth();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isMounted, setIsMounted] = useState<boolean>(false);
+  const router = useRouter();
+  const { user, loading: authLoading, loginWithSupabase, logout } = useAuth();
 
   // Form states
   const [emailInput, setEmailInput] = useState("");
@@ -29,15 +29,6 @@ export default function AdminLayout({
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-    // Check if user is logged in as admin via AuthContext or local session
-    const session = localStorage.getItem("bogem_admin_session");
-    if (user?.role === "admin" || session === "true") {
-      setIsAuthenticated(true);
-    }
-  }, [user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,32 +38,10 @@ export default function AdminLayout({
     const cleanUser = emailInput.trim().toLowerCase();
     const cleanPass = passwordInput.trim();
 
-    // Check credentials:
-    // 1. Check fallback master key:
-    const isMasterKey =
-      (cleanUser === "admindesabogem@gmail.com" ||
-        cleanUser === "admindesabogem" ||
-        cleanUser === "admindesabogem@desa.id" ||
-        cleanUser === "admin@desa.id") &&
-      cleanPass === "Bogem241";
-
-    if (isMasterKey) {
-      localStorage.setItem("bogem_admin_session", "true");
-      setIsAuthenticated(true);
-      setErrorMsg("");
-      setLoading(false);
-      return;
-    }
-
-    // 2. Check Supabase Cloud Auth for real Admin users
     try {
       const res = await loginWithSupabase(cleanUser, cleanPass);
-      if (res.success) {
-        localStorage.setItem("bogem_admin_session", "true");
-        setIsAuthenticated(true);
-        setErrorMsg("");
-      } else {
-        setErrorMsg("Email atau kata sandi admin tidak sesuai. Silakan periksa kembali.");
+      if (!res.success) {
+        setErrorMsg(res.error || "Email atau kata sandi admin tidak sesuai. Silakan periksa kembali.");
       }
     } catch {
       setErrorMsg("Gagal memverifikasi akun admin. Periksa koneksi internet Anda.");
@@ -82,58 +51,48 @@ export default function AdminLayout({
   };
 
   const handleLogout = async () => {
-    localStorage.removeItem("bogem_admin_session");
     await logout();
-    setIsAuthenticated(false);
-    setEmailInput("");
-    setPasswordInput("");
-    setErrorMsg("");
+    router.push("/");
   };
 
-  // Prevent flash before hydration mount
-  if (!isMounted) {
+  // Loading state while verifying auth session
+  if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <div className="animate-pulse text-emerald-800 text-sm font-bold">
-          Memuat Panel Desa...
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center space-y-3">
+        <Loader2 className="w-8 h-8 text-[#063321] animate-spin" />
+        <div className="text-slate-600 text-xs font-semibold">
+          Memverifikasi Hak Akses Pengelola Desa...
         </div>
       </div>
     );
   }
 
-  // If not authenticated, show Admin Login Gate
-  if (!isAuthenticated) {
+  // If user is not logged in or role is not admin, show Admin Login Gate
+  if (!user || user.role !== "admin") {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-[#002517] via-[#003822] to-[#004D2E] flex flex-col justify-center items-center p-4 sm:p-6 text-white relative overflow-hidden">
-        
-        {/* Subtle decorative background lights */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
-
+      <main className="min-h-screen bg-[#063321] flex flex-col justify-center items-center p-4 sm:p-6 text-white relative overflow-hidden">
         <div className="w-full max-w-md space-y-6 relative z-10">
-          
           {/* Back to Public Web */}
           <Link
             href="/"
-            className="inline-flex items-center space-x-2 text-xs font-bold text-emerald-200 hover:text-white transition bg-white/10 hover:bg-white/20 backdrop-blur px-3.5 py-1.5 rounded-full border border-emerald-400/20 active:scale-95"
+            className="inline-flex items-center space-x-2 text-xs font-semibold text-emerald-100 hover:text-white transition bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-full border border-white/10 active:scale-95"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Kembali ke Website Utama</span>
           </Link>
 
           {/* Login Card */}
-          <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200/80 space-y-6 animate-in fade-in zoom-in duration-300">
-            
+          <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200/80 space-y-6 animate-in fade-in zoom-in duration-200">
             {/* Header */}
             <div className="text-center space-y-2">
               <div className="w-14 h-16 flex items-center justify-center mx-auto">
                 <img
                   src="/images/logo-magetan.png"
                   alt="Logo Kabupaten Magetan"
-                  className="w-full h-full object-contain drop-shadow-md"
+                  className="w-full h-full object-contain"
                 />
               </div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Login Pengelola Desa
               </h1>
               <p className="text-xs text-slate-500">
@@ -149,24 +108,31 @@ export default function AdminLayout({
               </div>
             )}
 
+            {user && user.role !== "admin" && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3.5 rounded-2xl flex items-start space-x-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <span>Akun Anda ({user.email}) terdaftar sebagai Warga, bukan Admin Desa. Silakan masuk menggunakan akun pengelola yang berwenang.</span>
+              </div>
+            )}
+
             {/* Form */}
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 block">
+                <label className="text-xs font-bold text-slate-700 block uppercase">
                   Email Admin
                 </label>
                 <input
-                  type="text"
+                  type="email"
                   required
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="Masukkan email / username..."
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-xs sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 transition"
+                  placeholder="admin@desabogem.id"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 transition"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 block">
+                <label className="text-xs font-bold text-slate-700 block uppercase">
                   Kata Sandi
                 </label>
                 <div className="relative">
@@ -176,7 +142,7 @@ export default function AdminLayout({
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
                     placeholder="Masukkan kata sandi..."
-                    className="w-full pl-4 pr-11 py-3 rounded-xl border border-slate-200 bg-slate-50 text-xs sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 transition"
+                    className="w-full pl-4 pr-11 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 transition"
                   />
                   <button
                     type="button"
@@ -192,25 +158,23 @@ export default function AdminLayout({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-extrabold py-3.5 px-4 rounded-xl text-xs sm:text-sm transition shadow-lg hover:shadow-emerald-900/20 active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2 mt-2"
+                className="w-full bg-[#063321] hover:bg-[#073d28] text-white font-bold py-3 px-4 rounded-xl text-xs sm:text-sm transition shadow-sm active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2 mt-2"
               >
                 <Lock className="w-4 h-4" />
                 <span>{loading ? "Memverifikasi..." : "Masuk ke Panel Pengelola"}</span>
               </button>
             </form>
-
           </div>
-
         </div>
       </main>
     );
   }
 
-  // If authenticated, render Admin Layout with top control bar
+  // If authenticated as admin, render Admin Layout with top control bar
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       {/* Admin Top Sticky Bar */}
-      <header className="bg-[#002B1B] text-white sticky top-0 z-40 shadow-sm border-b border-emerald-800/60 px-4 sm:px-6 lg:px-8 py-3">
+      <header className="bg-[#063321] text-white sticky top-0 z-40 shadow-sm border-b border-emerald-900/60 px-4 sm:px-6 lg:px-8 py-2.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Link
@@ -230,20 +194,23 @@ export default function AdminLayout({
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-3">
+            <span className="hidden md:inline-flex text-xs text-emerald-200/90 font-medium">
+              {user.email}
+            </span>
             <Link
               href="/"
               target="_blank"
-              className="text-[11px] sm:text-xs text-emerald-200 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl transition border border-emerald-400/20"
+              className="text-[11px] sm:text-xs text-emerald-100 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl transition border border-white/10"
             >
               Buka Web Publik ↗
             </Link>
             <button
               onClick={handleLogout}
-              className="text-[11px] sm:text-xs text-rose-200 hover:text-white bg-rose-900/60 hover:bg-rose-800 px-3 py-1.5 rounded-xl transition flex items-center space-x-1 border border-rose-500/30 active:scale-95"
-              title="Kunci Akses / Keluar"
+              className="text-[11px] sm:text-xs text-rose-200 hover:text-white bg-rose-900/40 hover:bg-rose-900/80 px-3 py-1.5 rounded-xl transition flex items-center space-x-1 border border-rose-500/20 active:scale-95"
+              title="Keluar dari Panel Admin"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Kunci Akses</span>
+              <span>Keluar</span>
             </button>
           </div>
         </div>

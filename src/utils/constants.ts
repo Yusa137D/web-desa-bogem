@@ -1,12 +1,10 @@
-export const ADMIN_SECRET_KEY = "DESA-ADMIN-2026";
-
 export const APP_CONFIG = {
-  name: "Desa Digital",
-  subTitle: "Website Resmi Layanan Publik & UMKM Desa",
-  fullAddress: "Alamat Kantor Desa, Kecamatan, Kabupaten",
+  name: "Web Desa Bogem",
+  subTitle: "Website Resmi Pemerintah Desa Bogem, Kec. Kawedanan, Kab. Magetan",
+  fullAddress: "Jl. Bakti Mulya No. 241, Desa Bogem, Kec. Kawedanan, Kab. Magetan, Jawa Timur 63382",
   phone: "+62 812-3456-7890",
-  email: "pemdes@desa.id",
-  workingHours: "Senin - Jumat: 07.30 - 15.15 WIB",
+  email: "info@desabogem.id",
+  workingHours: "Senin - Jumat: 08.00 - 15.00 WIB",
 };
 
 export const UMKM_CATEGORIES = [

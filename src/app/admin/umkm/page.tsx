@@ -12,6 +12,7 @@ import { UMKMItem } from "@/types/umkm";
 import { UMKM_CATEGORIES } from "@/utils/constants";
 import { formatRupiahInput } from "@/utils/formatters";
 import { compressImage } from "@/utils/imageCompressor";
+import { uploadVillageImage } from "@/lib/storage";
 import {
   ArrowLeft,
   Send,
@@ -30,7 +31,6 @@ import {
   Phone,
   Search,
   Check,
-  Sparkles,
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
@@ -90,7 +90,6 @@ export default function KelolaUMKMAdmin() {
     }
   };
 
-  // Convert image file to compressed Data URL (WebP/JPEG)
   const processFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       setFeedbackMsg("Berkas harus berupa gambar (JPG, PNG, WEBP).");
@@ -99,18 +98,24 @@ export default function KelolaUMKMAdmin() {
     }
 
     try {
-      const compressed = await compressImage(file, 1200, 900, 0.82);
-      setGambar(compressed);
+      const publicUrl = await uploadVillageImage(file, "umkm");
+      setGambar(publicUrl);
       setStatus("idle");
     } catch {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setGambar(event.target.result as string);
-          setStatus("idle");
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 1200, 900, 0.82);
+        setGambar(compressed);
+        setStatus("idle");
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setGambar(event.target.result as string);
+            setStatus("idle");
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -260,7 +265,7 @@ export default function KelolaUMKMAdmin() {
 
     setDeletingId(item.id);
     try {
-      await deleteUMKM(item.id, item.nama_usaha);
+      await deleteUMKM(item.id);
       setDeleteSuccessMsg(`Produk UMKM "${item.nama_usaha}" berhasil dihapus.`);
       setTimeout(() => setDeleteSuccessMsg(""), 4000);
       if (editingId === item.id) {

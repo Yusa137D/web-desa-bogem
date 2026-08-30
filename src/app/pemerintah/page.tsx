@@ -6,51 +6,34 @@ import {
   Users,
   UserCheck,
   ShieldCheck,
-  Sparkles,
+  Landmark,
   Network,
   ArrowLeft,
   Search,
 } from "lucide-react";
-import { fetchPerangkatList, getLocalPerangkat, fallbackPerangkatList } from "@/services/perangkatService";
+import { fetchPerangkatList, fallbackPerangkatList } from "@/services/perangkatService";
 import { PerangkatItem } from "@/types/perangkat";
 import ImageWithSkeleton from "@/components/ImageWithSkeleton";
 
 export default function PemerintahPage() {
-  // Initial state strictly matches SSR to prevent Hydration Mismatch
   const [perangkatList, setPerangkatList] = useState<PerangkatItem[]>(fallbackPerangkatList);
   const [loading, setLoading] = useState(false);
   const [filterKategori, setFilterKategori] = useState<string>("semua");
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    // 1. Immediately hydrate with cached local data on client mount
-    const local = getLocalPerangkat();
-    if (local && local.length > 0) {
-      setPerangkatList(local);
-    }
-
-    // 2. Fetch latest data asynchronously
     async function loadData() {
+      setLoading(true);
       try {
         const data = await fetchPerangkatList();
         setPerangkatList(data);
       } catch (err) {
         console.error("Failed to load perangkat list:", err);
+      } finally {
+        setLoading(false);
       }
     }
     loadData();
-
-    const handleUpdate = () => {
-      loadData();
-    };
-
-    window.addEventListener("local_perangkat_updated", handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-
-    return () => {
-      window.removeEventListener("local_perangkat_updated", handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-    };
   }, []);
 
   const filteredList = perangkatList.filter((item) => {
@@ -81,65 +64,63 @@ export default function PemerintahPage() {
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] pb-28 pt-6 sm:pt-8 px-4 sm:px-6 lg:px-8 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto space-y-8 sm:space-y-10">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
         
         {/* 1. Header Banner */}
-        <div className="bg-gradient-to-br from-[#00321F] via-[#004A2F] to-[#006643] rounded-3xl p-6 sm:p-10 lg:p-12 text-white shadow-xl relative overflow-hidden">
-          <div className="absolute -right-10 -bottom-10 w-64 h-64 sm:w-72 sm:h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="relative z-10 space-y-4 max-w-3xl">
+        <div className="bg-[#073623] rounded-3xl p-6 sm:p-8 lg:p-10 text-white shadow-sm relative overflow-hidden">
+          <div className="relative z-10 space-y-3 sm:space-y-4 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2.5">
               <Link
                 href="/#sotk"
-                className="inline-flex items-center space-x-1.5 bg-white/10 hover:bg-white/20 text-emerald-200 hover:text-white px-3 py-1 rounded-full text-xs font-bold transition backdrop-blur border border-emerald-400/20 active:scale-95"
+                className="inline-flex items-center space-x-1.5 bg-white/10 hover:bg-white/20 text-emerald-100 hover:text-white px-3 py-1 rounded-full text-xs font-semibold transition border border-white/10 active:scale-95"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Kembali ke Beranda</span>
               </Link>
-              <div className="inline-flex items-center space-x-2 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                <Users className="w-3.5 h-3.5" />
+              <div className="inline-flex items-center space-x-2 bg-emerald-800/80 border border-emerald-500/40 text-emerald-100 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                <Users className="w-3.5 h-3.5 text-emerald-300" />
                 <span>SOTK Pemerintah Desa</span>
               </div>
             </div>
 
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
               Pemerintah Desa Bogem
             </h1>
 
-            <p className="text-emerald-100/90 text-xs sm:text-sm lg:text-base leading-relaxed">
+            <p className="text-emerald-100/85 text-xs sm:text-sm lg:text-base leading-relaxed">
               Daftar susunan aparatur dan perangkat Pemerintah Desa Bogem, Kecamatan Kawedanan, Kabupaten Magetan yang berdedikasi melayani seluruh kebutuhan masyarakat secara prima dan transparan.
             </p>
           </div>
         </div>
 
         {/* 2. Bagan Tata Hubungan & Hierarki Ringkas */}
-        <section className="bg-white rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
-          <div className="flex items-center space-x-3 text-[#004329] border-b border-slate-100 pb-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold flex-shrink-0">
-              <Network className="w-5 h-5" />
+        <section className="bg-white rounded-3xl p-5 sm:p-8 shadow-sm border border-slate-200/80 space-y-5">
+          <div className="flex items-center space-x-3 text-emerald-900 border-b border-slate-100 pb-4">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold flex-shrink-0 border border-emerald-100">
+              <Network className="w-5 h-5 text-emerald-700" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Hierarki Tata Kerja Pemerintahan</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Hierarki Tata Kerja Pemerintahan</h2>
               <p className="text-xs text-slate-500">Alur koordinasi dan penugasan aparatur Desa Bogem</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-center text-xs">
-            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200">
-              <span className="font-extrabold text-[#00321F] block text-sm mb-1">Kepala Desa</span>
-              <span className="text-slate-600">Pimpinan Tertinggi & Penanggung Jawab Kebijakan Desa</span>
+            <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80">
+              <span className="font-bold text-[#063321] block text-sm mb-1">Kepala Desa</span>
+              <span className="text-slate-600 leading-relaxed">Pimpinan Tertinggi & Penanggung Jawab Kebijakan Desa</span>
             </div>
-            <div className="bg-teal-50 p-4 rounded-2xl border border-teal-200">
-              <span className="font-extrabold text-[#00321F] block text-sm mb-1">Sekretariat Desa</span>
-              <span className="text-slate-600">Sekretaris Desa membawahi Kaur Keuangan, Umum, & Perencanaan</span>
+            <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80">
+              <span className="font-bold text-[#063321] block text-sm mb-1">Sekretariat Desa</span>
+              <span className="text-slate-600 leading-relaxed">Sekretaris Desa membawahi Kaur Keuangan, Umum, & Perencanaan</span>
             </div>
-            <div className="bg-cyan-50 p-4 rounded-2xl border border-cyan-200">
-              <span className="font-extrabold text-[#00321F] block text-sm mb-1">Pelaksana Teknis</span>
-              <span className="text-slate-600">Kasi Pemerintahan, Kasi Kesejahteraan, & Kasi Pelayanan</span>
+            <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80">
+              <span className="font-bold text-[#063321] block text-sm mb-1">Pelaksana Teknis</span>
+              <span className="text-slate-600 leading-relaxed">Kasi Pemerintahan, Kasi Kesejahteraan, & Kasi Pelayanan</span>
             </div>
-            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200">
-              <span className="font-extrabold text-[#00321F] block text-sm mb-1">Pelaksana Wilayah</span>
-              <span className="text-slate-600">Kepala Dusun (Kasun) membina wilayah rukun warga</span>
+            <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80">
+              <span className="font-bold text-[#063321] block text-sm mb-1">Pelaksana Wilayah</span>
+              <span className="text-slate-600 leading-relaxed">Kepala Dusun (Kasun) membina wilayah rukun warga</span>
             </div>
           </div>
         </section>
@@ -160,8 +141,8 @@ export default function PemerintahPage() {
                 onClick={() => setFilterKategori(tab.id)}
                 className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap active:scale-95 ${
                   filterKategori === tab.id
-                    ? "bg-[#004329] text-white shadow-emerald-900/10"
-                    : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80"
+                    ? "bg-[#063321] text-white"
+                    : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80"
                 }`}
               >
                 {tab.label}
@@ -177,7 +158,7 @@ export default function PemerintahPage() {
               placeholder="Cari nama atau jabatan..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-200/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+              className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 shadow-sm"
             />
           </div>
         </div>
@@ -194,7 +175,7 @@ export default function PemerintahPage() {
             <p className="text-xs text-slate-500">Coba ubah kata kunci pencarian atau filter kategori di atas.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
             {filteredList.map((p) => {
               const isKades =
                 p.jabatan.toLowerCase().includes("kepala desa") &&
@@ -204,12 +185,12 @@ export default function PemerintahPage() {
               return (
                 <div
                   key={p.id}
-                  className={`bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border transition-all duration-300 flex flex-col justify-between space-y-3 sm:space-y-4 group hover:shadow-xl ${
+                  className={`bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-4 border transition-all duration-200 flex flex-col justify-between space-y-3 group hover:shadow-md ${
                     isKades
-                      ? "border-emerald-400 shadow-md ring-2 ring-emerald-500/20"
+                      ? "border-emerald-300 shadow-sm ring-1 ring-emerald-500/30"
                       : isSekdes
-                      ? "border-teal-300 shadow-sm"
-                      : "border-slate-200/80 shadow-sm"
+                      ? "border-emerald-200/90 shadow-sm"
+                      : "border-slate-200/80 shadow-sm hover:border-slate-300"
                   }`}
                 >
                   {/* Portrait photo */}
@@ -217,39 +198,39 @@ export default function PemerintahPage() {
                     <ImageWithSkeleton
                       src={p.foto}
                       alt={p.nama}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      fallbackIcon={<UserCheck className="w-10 h-10 sm:w-16 sm:h-16 text-slate-300" />}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      fallbackIcon={<UserCheck className="w-10 h-10 sm:w-14 sm:h-14 text-slate-300" />}
                     />
 
                     {isKades && (
-                      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-[#004329] text-white text-[9px] sm:text-[10px] font-extrabold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-lg flex items-center space-x-1 border border-emerald-400/30 z-10">
-                        <Sparkles className="w-3 h-3 text-amber-300 flex-shrink-0" />
+                      <div className="absolute top-2 left-2 bg-[#063321] text-white text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-0.5 rounded-full shadow flex items-center space-x-1 border border-emerald-400/30 z-10">
+                        <Landmark className="w-2.5 h-2.5 text-emerald-300" />
                         <span>Pimpinan</span>
                       </div>
                     )}
                   </div>
 
                   {/* Member info */}
-                  <div className="space-y-1 sm:space-y-2 text-center">
+                  <div className="space-y-1 text-center">
                     <div>
                       <span
-                        className={`inline-block px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[11px] font-extrabold truncate max-w-full ${
+                        className={`inline-block px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold truncate max-w-full ${
                           isKades
-                            ? "bg-[#004329] text-white"
+                            ? "bg-[#063321] text-white"
                             : isSekdes
-                            ? "bg-teal-100 text-teal-900"
-                            : "bg-emerald-50 text-[#004329] border border-emerald-200"
+                            ? "bg-emerald-100 text-emerald-900 font-bold"
+                            : "bg-emerald-50 text-emerald-900 border border-emerald-200/80"
                         }`}
                       >
                         {p.jabatan}
                       </span>
                     </div>
 
-                    <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug line-clamp-1">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-snug line-clamp-1">
                       {p.nama}
                     </h3>
 
-                    <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                    <p className="text-[10px] text-slate-500 font-medium">
                       Pemerintah Desa Bogem
                     </p>
                   </div>

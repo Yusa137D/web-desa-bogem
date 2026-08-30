@@ -26,15 +26,9 @@ interface AuthContextType {
     password: string;
     nama: string;
     phone: string;
-    role: UserRole;
-    adminSecret?: string;
   }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   logout: () => Promise<void>;
-  demoLogin: (role: UserRole) => void;
 }
-
-// Secret key required to register as Admin Desa
-export const AdminSecretKey = "DESA-ADMIN-2026";
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -43,36 +37,39 @@ const AuthContext = createContext<AuthContextType>({
   loginWithGoogle: async () => ({ success: false }),
   registerWithSupabase: async () => ({ success: false }),
   logout: async () => {},
-  demoLogin: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Parse user profile from Supabase user session or fallback metadata
+  // Parse user profile from Supabase user session and profiles table
   const parseUserProfile = async (supabaseUser: SupabaseUser): Promise<UserProfile> => {
     const meta = supabaseUser.user_metadata || {};
-    let role: UserRole = meta.role === "admin" ? "admin" : "warga";
-    let name: string = meta.name || meta.nama || supabaseUser.email?.split("@")[0] || "User Desa";
+    let role: UserRole = "warga";
+    let name: string = meta.name || meta.nama || supabaseUser.email?.split("@")[0] || "Warga Desa";
     let nik: string = meta.nik || "";
     let phone: string = meta.phone || meta.no_hp || "";
 
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", supabaseUser.id)
-        .maybeSingle();
+      if (supabase) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, nama, nik, no_hp")
+          .eq("id", supabaseUser.id)
+          .maybeSingle();
 
-      if (profile) {
-        if (profile.role) role = profile.role as UserRole;
-        if (profile.nama) name = profile.nama;
-        if (profile.nik) nik = profile.nik;
-        if (profile.no_hp) phone = profile.no_hp;
+        if (profile) {
+          if (profile.role === "admin" || profile.role === "warga") {
+            role = profile.role as UserRole;
+          }
+          if (profile.nama) name = profile.nama;
+          if (profile.nik) nik = profile.nik;
+          if (profile.no_hp) phone = profile.no_hp;
+        }
       }
-    } catch {
-      // Ignore table error if profile table is not initialized yet
+    } catch (err) {
+      console.warn("Could not fetch user profile from profiles table:", err);
     }
 
     return {
@@ -89,17 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     async function initAuth() {
+      if (!supabase) {
+        if (mounted) setLoading(false);
+        return;
+      }
+
       try {
         const { data } = await supabase.auth.getSession();
         if (data.session?.user && mounted) {
           const profile = await parseUserProfile(data.session.user);
           setUser(profile);
-        } else {
-          // Check local demo session
-          const savedDemo = localStorage.getItem("desa_demo_user");
-          if (savedDemo && mounted) {
-            setUser(JSON.parse(savedDemo));
-          }
         }
       } catch (err) {
         console.error("Auth init error:", err);
@@ -110,20 +106,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
 
+    if (!supabase) return;
+
     // Listen to Supabase Auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
+      if (session?.user && mounted) {
         const profile = await parseUserProfile(session.user);
         setUser(profile);
-      } else {
-        const savedDemo = localStorage.getItem("desa_demo_user");
-        if (savedDemo) {
-          setUser(JSON.parse(savedDemo));
-        } else {
-          setUser(null);
-        }
+      } else if (mounted) {
+        setUser(null);
       }
-      setLoading(false);
+      if (mounted) setLoading(false);
     });
 
     return () => {
@@ -132,8 +125,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Secure Real Login with Supabase (Supports Email OR NIK)
+  // Secure Login with Supabase (Supports Email OR NIK)
   const loginWithSupabase = async (identifier: string, password: string) => {
+    if (!supabase) {
+      return { success: false, error: "Layanan autentikasi belum siap." };
+    }
+
     try {
       const cleanIdentifier = identifier.trim();
       let targetEmail = cleanIdentifier.toLowerCase();
@@ -172,7 +169,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        localStorage.removeItem("desa_demo_user");
         const profile = await parseUserProfile(data.user);
         setUser(profile);
         return { success: true };
@@ -185,55 +181,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Secure Register with Supabase & NIK Validation
+  // Secure Citizen Registration
   const registerWithSupabase = async (data: {
     nik?: string;
     email: string;
     password: string;
     nama: string;
     phone: string;
-    role: UserRole;
-    adminSecret?: string;
   }): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
-    try {
-      // Validate Admin Secret Code if requesting Admin Role
-      if (data.role === "admin") {
-        if (!data.adminSecret || data.adminSecret !== "DESA-ADMIN-2026") {
-          return {
-            success: false,
-            error: "Kode Rahasia Admin Desa salah. Hanya perangkat desa berwenang yang dapat mendaftar sebagai Admin.",
-          };
-        }
-      }
+    if (!supabase) {
+      return { success: false, error: "Layanan autentikasi belum siap." };
+    }
 
+    try {
       const cleanNik = data.nik ? data.nik.trim() : "";
 
-      // Validate NIK for warga
-      if (data.role === "warga") {
-        if (!cleanNik || cleanNik.length !== 16 || !/^[0-9]{16}$/.test(cleanNik)) {
-          return {
-            success: false,
-            error: "NIK wajib 16 digit angka sesuai KTP.",
-          };
-        }
-
-        // Check if NIK already registered
-        try {
-          const { data: existingNik } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("nik", cleanNik)
-            .maybeSingle();
-
-          if (existingNik) {
-            return {
-              success: false,
-              error: "NIK ini sudah terdaftar di sistem desa. Silakan masuk menggunakan NIK Anda.",
-            };
-          }
-        } catch {
-          // Non-fatal if profiles table does not have RLS yet
-        }
+      if (cleanNik && (cleanNik.length !== 16 || !/^[0-9]{16}$/.test(cleanNik))) {
+        return {
+          success: false,
+          error: "NIK wajib 16 digit angka sesuai KTP.",
+        };
       }
 
       const cleanEmail = data.email.trim().toLowerCase();
@@ -245,7 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             nik: cleanNik,
             name: data.nama,
             phone: data.phone,
-            role: data.role,
+            role: "warga",
           },
         },
       });
@@ -256,52 +223,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           errorMsg = "Email ini sudah terdaftar. Silakan lakukan Login.";
         } else if (error.message.includes("Password should be at least")) {
           errorMsg = "Kata sandi minimal 6 karakter.";
-        } else if (error.message.toLowerCase().includes("error sending confirmation email")) {
-          errorMsg = "Gagal mengirim email konfirmasi. Pengaturan Custom SMTP belum sesuai, atau silakan nonaktifkan 'Confirm email' di Supabase agar registrasi aktif instan.";
-        } else if (error.message.toLowerCase().includes("rate limit") || error.message.toLowerCase().includes("exceeded")) {
-          errorMsg = "Batas pengiriman email Supabase tercapai. Harap nonaktifkan 'Confirm email' di dashboard Supabase atau periksa Custom SMTP Anda.";
         }
         return { success: false, error: errorMsg };
       }
 
-      // Try inserting to profiles table
-      if (authData.user) {
-        try {
-          await supabase.from("profiles").upsert([
-            {
-              id: authData.user.id,
-              nik: cleanNik,
-              email: cleanEmail,
-              nama: data.nama,
-              no_hp: data.phone,
-              role: data.role,
-              updated_at: new Date().toISOString(),
-            },
-          ]);
-        } catch {
-          // Table insert failure is non-fatal if profiles table isn't created yet
-        }
+      const needsConfirmation = !authData.session;
 
-        // Check if user session was created immediately or requires email confirmation
-        const needsConfirmation = !authData.session;
-
-        if (!needsConfirmation) {
-          const profile: UserProfile = {
-            id: authData.user.id,
-            nik: cleanNik,
-            email: cleanEmail,
-            name: data.nama,
-            role: data.role,
-            phone: data.phone,
-          };
-          setUser(profile);
-          return { success: true, needsEmailConfirmation: false };
-        } else {
-          return { success: true, needsEmailConfirmation: true };
-        }
+      if (!needsConfirmation && authData.user) {
+        const profile: UserProfile = {
+          id: authData.user.id,
+          nik: cleanNik,
+          email: cleanEmail,
+          name: data.nama,
+          role: "warga",
+          phone: data.phone,
+        };
+        setUser(profile);
       }
 
-      return { success: true, needsEmailConfirmation: false };
+      return { success: true, needsEmailConfirmation: needsConfirmation };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat mendaftar.";
       return { success: false, error: msg };
@@ -310,6 +250,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // 1-Click Google OAuth Sign-in
   const loginWithGoogle = async (redirectPath?: string) => {
+    if (!supabase) {
+      return { success: false, error: "Layanan autentikasi belum siap." };
+    }
+
     try {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       const redirectTo = `${origin}/auth/callback${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`;
@@ -335,27 +279,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Demo mode login for testing offline or presentation
-  const demoLogin = (role: UserRole) => {
-    const demoProfile: UserProfile = {
-      id: role === "admin" ? "demo-admin-id" : "demo-warga-id",
-      nik: role === "warga" ? "3520012345670001" : undefined,
-      email: role === "admin" ? "admin@desa.id" : "warga@desa.id",
-      name: role === "admin" ? "Admin Desa" : "Budi Santoso (Warga)",
-      role: role,
-      phone: "081234567890",
-    };
-    setUser(demoProfile);
-    localStorage.setItem("desa_demo_user", JSON.stringify(demoProfile));
-  };
-
   const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // Ignore
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.warn("Sign out error:", err);
+      }
     }
-    localStorage.removeItem("desa_demo_user");
     setUser(null);
   };
 
@@ -368,7 +299,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithGoogle,
         registerWithSupabase,
         logout,
-        demoLogin,
       }}
     >
       {children}

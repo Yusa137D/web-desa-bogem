@@ -8,12 +8,10 @@ import { UMKMItem } from "@/types/umkm";
 import { PerangkatItem } from "@/types/perangkat";
 import { ProfilDesaData } from "@/types/profil";
 
-// Ensure server always serves fresh dynamic data on request
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+// Enable Incremental Static Regeneration (5 minutes edge cache)
+export const revalidate = 300;
 
 export default async function Home() {
-  // Fetch initial data at server level for 0ms instant HTML first-paint
   let initialBerita: BeritaItem[] = fallbackBeritaList;
   let initialUMKM: UMKMItem[] = fallbackUMKMList;
   let initialPerangkat: PerangkatItem[] = fallbackPerangkatList;

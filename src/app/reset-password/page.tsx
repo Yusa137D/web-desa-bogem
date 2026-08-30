@@ -62,25 +62,25 @@ function ResetPasswordForm() {
         {/* Header Logo */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center space-x-3 group">
-            <div className="w-12 h-12 rounded-2xl bg-[#004329] text-white flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+            <div className="w-12 h-12 rounded-2xl bg-[#063321] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition">
               <Store className="w-6 h-6 text-emerald-300" />
             </div>
           </Link>
-          <h1 className="text-2xl font-extrabold text-slate-900">Buat Kata Sandi Baru</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Buat Kata Sandi Baru</h1>
           <p className="text-xs text-slate-500">
             Masukkan kata sandi baru yang kuat dan aman untuk akun Anda
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
           
           {success ? (
             <div className="space-y-4 text-center animate-in zoom-in-95 duration-200 py-4">
-              <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto border-2 border-emerald-200 shadow-inner">
-                <CheckCircle2 className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto border border-emerald-200 shadow-sm">
+                <CheckCircle2 className="w-8 h-8 text-emerald-700" />
               </div>
               <div className="space-y-1">
-                <h2 className="text-lg font-extrabold text-slate-900">Kata Sandi Berhasil Diperbarui!</h2>
+                <h2 className="text-lg font-bold text-slate-900">Kata Sandi Berhasil Diperbarui!</h2>
                 <p className="text-xs text-slate-600">
                   Anda akan otomatis dialihkan ke halaman masuk dalam beberapa detik...
                 </p>
@@ -88,7 +88,7 @@ function ResetPasswordForm() {
               <div className="pt-2">
                 <Link
                   href="/login"
-                  className="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-700 hover:underline"
+                  className="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-800 hover:underline"
                 >
                   <span>Masuk Sekarang</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -117,7 +117,7 @@ function ResetPasswordForm() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Min. 8 karakter, huruf besar, kecil, angka"
-                      className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                      className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                     <button
                       type="button"
@@ -164,7 +164,7 @@ function ResetPasswordForm() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Ketik ulang kata sandi baru"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                   </div>
                 </div>
@@ -172,7 +172,7 @@ function ResetPasswordForm() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md mt-2 disabled:opacity-70 active:scale-95"
+                  className="w-full bg-[#063321] hover:bg-[#073d28] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-sm mt-2 disabled:opacity-70 active:scale-95"
                 >
                   {loading ? (
                     <>

@@ -21,7 +21,6 @@ import {
   Store,
   TreePine,
   TrendingUp,
-  Sparkles,
   Calculator,
   Percent,
 } from "lucide-react";

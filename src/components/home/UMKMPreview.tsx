@@ -1,22 +1,40 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ShoppingBag, Phone, ArrowRight, MapPin } from "lucide-react";
 import { UMKMItem } from "@/types/umkm";
 import ImageWithSkeleton from "@/components/ImageWithSkeleton";
+import { fetchUMKMList } from "@/services/umkmService";
 
 interface UMKMPreviewProps {
-  listUMKM: UMKMItem[];
+  listUMKM?: UMKMItem[];
 }
 
-export default function UMKMPreview({ listUMKM }: UMKMPreviewProps) {
+export default function UMKMPreview({ listUMKM = [] }: UMKMPreviewProps) {
+  const [items, setItems] = useState<UMKMItem[]>(listUMKM);
+  const [loading, setLoading] = useState(listUMKM.length === 0);
+
+  useEffect(() => {
+    fetchUMKMList()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setItems(data.slice(0, 3));
+        }
+      })
+      .catch((err) => console.error("Error loading UMKM preview:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16 sm:mb-20 space-y-6 sm:space-y-8">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 sm:mb-16 space-y-6 sm:space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <div className="inline-flex items-center space-x-2 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-            <ShoppingBag className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center space-x-2 bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+            <ShoppingBag className="w-3.5 h-3.5 text-emerald-700" />
             <span>Beli Dari Desa</span>
           </div>
-          <h2 className="text-xl sm:text-3xl font-extrabold text-slate-900">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
             Produk & UMKM Unggulan Warga
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
@@ -25,14 +43,25 @@ export default function UMKMPreview({ listUMKM }: UMKMPreviewProps) {
         </div>
         <Link
           href="/potensi"
-          className="inline-flex items-center space-x-1 text-xs font-bold text-[#004329] hover:underline flex-shrink-0"
+          className="inline-flex items-center space-x-1 text-xs font-bold text-emerald-800 hover:text-emerald-950 transition hover:underline flex-shrink-0"
         >
           <span>Lihat Semua Produk</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
 
-      {listUMKM.length === 0 ? (
+      {loading && items.length === 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 animate-pulse space-y-4">
+              <div className="aspect-[4/3] bg-slate-200 rounded-2xl w-full" />
+              <div className="h-5 bg-slate-200 rounded w-3/4" />
+              <div className="h-4 bg-slate-200 rounded w-1/2" />
+              <div className="h-3 bg-slate-200 rounded w-full" />
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
         <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border border-slate-200/80 space-y-2">
           <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
           <h3 className="text-base font-bold text-slate-800">Belum Ada Produk UMKM</h3>
@@ -42,20 +71,20 @@ export default function UMKMPreview({ listUMKM }: UMKMPreviewProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {listUMKM.map((item) => (
+          {items.map((item) => (
             <div
               key={item.id}
-              className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-200/80 transition-all duration-300 flex flex-col justify-between group"
+              className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200/80 transition-all duration-200 flex flex-col justify-between group"
             >
               <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
                 <ImageWithSkeleton
                   src={item.gambar}
                   alt={item.nama_usaha}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   fallbackIcon={<ShoppingBag className="w-10 h-10 text-emerald-600/40" />}
                 />
                 {item.kategori && (
-                  <div className="absolute top-3 left-3 bg-[#004329]/90 backdrop-blur text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow z-10">
+                  <div className="absolute top-3 left-3 bg-[#063321]/90 backdrop-blur text-white text-[10px] font-semibold px-2.5 py-0.5 rounded-full shadow-sm z-10">
                     {item.kategori}
                   </div>
                 )}
@@ -82,10 +111,10 @@ export default function UMKMPreview({ listUMKM }: UMKMPreviewProps) {
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-3.5 border-t border-slate-100 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-semibold">Harga Mulai</span>
-                    <span className="text-xs sm:text-sm font-extrabold text-[#004329]">
+                    <span className="text-[10px] text-slate-400 block font-medium">Harga Mulai</span>
+                    <span className="text-xs sm:text-sm font-bold text-[#063321]">
                       {item.harga || "Hubungi WA"}
                     </span>
                   </div>
@@ -96,7 +125,7 @@ export default function UMKMPreview({ listUMKM }: UMKMPreviewProps) {
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 sm:px-3.5 rounded-xl transition flex items-center space-x-1.5 shadow active:scale-95"
+                      className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-3 sm:px-3.5 rounded-xl transition flex items-center space-x-1.5 shadow-sm active:scale-95"
                     >
                       <Phone className="w-3.5 h-3.5" />
                       <span>Pesan WA</span>

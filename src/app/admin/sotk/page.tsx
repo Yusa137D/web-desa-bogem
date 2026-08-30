@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchPerangkatList, createPerangkat, updatePerangkat, deletePerangkat } from "@/services/perangkatService";
 import { PerangkatItem } from "@/types/perangkat";
 import { compressImage } from "@/utils/imageCompressor";
+import { uploadVillageImage } from "@/lib/storage";
 import {
   ArrowLeft,
   Send,
@@ -21,7 +22,7 @@ import {
   Users,
   ShieldCheck,
   Award,
-  Sparkles
+  Landmark,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -93,18 +94,24 @@ export default function KelolaSOTKAdmin() {
     }
 
     try {
-      const compressed = await compressImage(file, 800, 1000, 0.82);
-      setFoto(compressed);
+      const publicUrl = await uploadVillageImage(file, "perangkat");
+      setFoto(publicUrl);
       setStatus("idle");
     } catch {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setFoto(event.target.result as string);
-          setStatus("idle");
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 800, 1000, 0.82);
+        setFoto(compressed);
+        setStatus("idle");
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setFoto(event.target.result as string);
+            setStatus("idle");
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -210,7 +217,7 @@ export default function KelolaSOTKAdmin() {
 
     setDeletingId(item.id);
     try {
-      await deletePerangkat(item.id, item.nama);
+      await deletePerangkat(item.id);
       setFeedbackMessage(`Data "${item.nama}" berhasil dihapus.`);
       setTimeout(() => setFeedbackMessage(""), 4000);
       if (editingId === item.id) resetForm();
@@ -491,8 +498,8 @@ export default function KelolaSOTKAdmin() {
                       <div className="space-y-1 flex-grow">
                         <div className="flex items-center space-x-1.5">
                           {isKades ? (
-                            <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#004329] text-white">
-                              <Sparkles className="w-3 h-3 text-amber-300" />
+                            <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#063321] text-white">
+                              <Landmark className="w-3 h-3 text-emerald-300" />
                               <span>{item.jabatan}</span>
                             </span>
                           ) : (

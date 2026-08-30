@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchProfilDesa, updateProfilDesa } from "@/services/profilService";
 import { BatasWilayah } from "@/types/profil";
 import { compressImage } from "@/utils/imageCompressor";
+import { uploadVillageImage } from "@/lib/storage";
 import {
   ArrowLeft,
   Send,
@@ -18,7 +19,7 @@ import {
   Trash2,
   FileText,
   RotateCw,
-  Sparkles,
+  Landmark,
   Network,
   History,
   Compass,
@@ -123,9 +124,10 @@ function KelolaProfilDesaContent() {
     loadData();
   }, []);
 
-  const handleImageUpload = async (
+  const handleCustomImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    setter: (url: string) => void
+    setter: (val: string) => void,
+    folder: "profil" = "profil"
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -136,16 +138,21 @@ function KelolaProfilDesaContent() {
     }
 
     try {
-      const compressed = await compressImage(file, 1400, 1000, 0.82);
-      setter(compressed);
+      const publicUrl = await uploadVillageImage(file, folder);
+      setter(publicUrl);
     } catch {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setter(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 1400, 1000, 0.82);
+        setter(compressed);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setter(event.target.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -321,7 +328,7 @@ function KelolaProfilDesaContent() {
                 {/* Sambutan Kepala Desa */}
                 <div className="space-y-5 border-b border-slate-100 pb-8">
                   <div className="flex items-center space-x-2 text-emerald-800">
-                    <Sparkles className="w-5 h-5 text-amber-500" />
+                    <Landmark className="w-5 h-5 text-emerald-700" />
                     <h2 className="text-base sm:text-lg font-bold text-slate-900">Sambutan Kepala Desa</h2>
                   </div>
 
@@ -350,7 +357,7 @@ function KelolaProfilDesaContent() {
                       <input
                         type="file"
                         ref={fileInputKadesRef}
-                        onChange={(e) => handleImageUpload(e, setFotoKades)}
+                        onChange={(e) => handleCustomImageUpload(e, setFotoKades, "profil")}
                         accept="image/*"
                         className="hidden"
                       />
@@ -518,7 +525,7 @@ function KelolaProfilDesaContent() {
                   <input
                     type="file"
                     ref={fileInputBaganDesaRef}
-                    onChange={(e) => handleImageUpload(e, setBaganDesaImage)}
+                    onChange={(e) => handleCustomImageUpload(e, setBaganDesaImage, "profil")}
                     accept="image/*"
                     className="hidden"
                   />
@@ -584,7 +591,7 @@ function KelolaProfilDesaContent() {
                   <input
                     type="file"
                     ref={fileInputBaganBpdRef}
-                    onChange={(e) => handleImageUpload(e, setBaganBpdImage)}
+                    onChange={(e) => handleCustomImageUpload(e, setBaganBpdImage, "profil")}
                     accept="image/*"
                     className="hidden"
                   />

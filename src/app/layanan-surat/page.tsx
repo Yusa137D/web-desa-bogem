@@ -13,7 +13,6 @@ import {
   Download,
   Send,
   Info,
-  Sparkles,
   ListPlus,
   ShieldCheck,
   User,
@@ -25,15 +24,15 @@ import {
   RefreshCw,
   FolderOpen,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { OpsiSurat, PermohonanSurat, CreatePermohonanInput, defaultOpsiSuratList } from "@/types/surat";
 import {
   fetchOpsiSuratList,
   createPermohonanSurat,
-  searchSuratByQuery,
-  getLocalOpsiSurat,
-  fetchSuratList,
+  searchSuratByTicket,
+  fetchUserSuratList,
 } from "@/services/suratService";
 import { formatDateIndonesian } from "@/utils/formatters";
 import { supabase } from "@/lib/supabase";
@@ -102,28 +101,13 @@ export default function LayananSuratPage() {
 
   // Load My Letters for Logged in Citizen
   const loadMyLetters = async () => {
-    if (!user) return;
+    if (!user || !user.id) return;
     setLoadingMyLetters(true);
     try {
-      const allLetters = await fetchSuratList();
-      const userNik = user.nik ? user.nik.trim() : "";
-      const userEmail = user.email ? user.email.trim().toLowerCase() : "";
-      const userName = user.name ? user.name.trim().toLowerCase() : "";
-
-      const filtered = allLetters.filter((item) => {
-        const itemNik = item.nik ? item.nik.trim() : "";
-        const itemEmail = item.email ? item.email.trim().toLowerCase() : "";
-        const itemName = item.nama_lengkap ? item.nama_lengkap.trim().toLowerCase() : "";
-
-        return (
-          (userNik && itemNik === userNik) ||
-          (userEmail && itemEmail === userEmail) ||
-          (userName && itemName === userName)
-        );
-      });
-      setMyLetters(filtered);
-    } catch {
-      // ignore
+      const userLetters = await fetchUserSuratList(user.id);
+      setMyLetters(userLetters);
+    } catch (err) {
+      console.error("loadMyLetters error:", err);
     } finally {
       setLoadingMyLetters(false);
     }
@@ -136,12 +120,6 @@ export default function LayananSuratPage() {
   }, [activeTab, user]);
 
   useEffect(() => {
-    const local = getLocalOpsiSurat();
-    if (local && local.length > 0) {
-      setOpsiList(local);
-      setSelectedOpsiId(local[0].id);
-    }
-
     async function loadOpsi() {
       try {
         const remote = await fetchOpsiSuratList();
@@ -149,26 +127,11 @@ export default function LayananSuratPage() {
           setOpsiList(remote);
           setSelectedOpsiId((prev) => prev || remote[0].id);
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error("loadOpsi error:", err);
       }
     }
     loadOpsi();
-
-    const handleUpdate = () => {
-      loadOpsi();
-      if (user) loadMyLetters();
-    };
-
-    window.addEventListener("local_opsi_surat_updated", handleUpdate);
-    window.addEventListener("local_surat_updated", handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-
-    return () => {
-      window.removeEventListener("local_opsi_surat_updated", handleUpdate);
-      window.removeEventListener("local_surat_updated", handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-    };
   }, [user]);
 
   const selectedOpsi = opsiList.find((o) => o.id === selectedOpsiId) || opsiList[0];
@@ -240,8 +203,8 @@ export default function LayananSuratPage() {
     if (!searchQuery.trim()) return;
 
     setSearching(true);
-    const res = await searchSuratByQuery(searchQuery);
-    setSearchResult(res);
+    const res = await searchSuratByTicket(searchQuery);
+    setSearchResult(res ? [res] : []);
     setSearching(false);
   };
 
@@ -256,32 +219,39 @@ export default function LayananSuratPage() {
       <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
         
         {/* Banner Section */}
-        <div className="bg-gradient-to-br from-[#00321F] via-[#004A2F] to-[#006643] rounded-3xl p-6 sm:p-10 lg:p-12 text-white shadow-xl relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none">
-            <FileText className="w-80 h-80 sm:w-96 sm:h-96 text-white" />
-          </div>
+        <div className="bg-[#073623] rounded-3xl p-6 sm:p-8 lg:p-10 text-white shadow-sm relative overflow-hidden">
           <div className="relative z-10 max-w-2xl space-y-3 sm:space-y-4">
-            <div className="inline-flex items-center space-x-2 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-4 h-4" />
-              <span>Layanan Administrasi Warga Mandiri</span>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Link
+                href="/"
+                className="inline-flex items-center space-x-1.5 bg-white/10 hover:bg-white/20 text-emerald-100 hover:text-white px-3 py-1 rounded-full text-xs font-semibold transition border border-white/10 active:scale-95"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Kembali ke Beranda</span>
+              </Link>
+              <div className="inline-flex items-center space-x-2 bg-emerald-800/80 border border-emerald-500/40 text-emerald-100 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Pelayanan Administrasi Warga</span>
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-white leading-tight">
               Layanan Pengajuan Surat Desa
             </h1>
-            <p className="text-emerald-100/90 text-xs sm:text-sm lg:text-base leading-relaxed">
+            <p className="text-emerald-100/85 text-xs sm:text-sm lg:text-base leading-relaxed">
               Pilih jenis surat yang Anda butuhkan, isi data formulir permohonan sesuai persyaratan, dan pantau statusnya secara online. Dokumen surat resmi yang telah selesai dapat langsung diunduh di sini.
             </p>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex flex-wrap items-center gap-2 bg-white p-2 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-sm">
           <button
             onClick={() => setActiveTab("form")}
-            className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-3 rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 ${
+            className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 ${
               activeTab === "form"
-                ? "bg-[#004329] text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100"
+                ? "bg-[#063321] text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             <Send className="w-4 h-4" />
@@ -290,10 +260,10 @@ export default function LayananSuratPage() {
 
           <button
             onClick={() => setActiveTab("lacak")}
-            className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-3 rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 ${
+            className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 ${
               activeTab === "lacak"
-                ? "bg-[#004329] text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100"
+                ? "bg-[#063321] text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             <Search className="w-4 h-4" />
@@ -302,10 +272,10 @@ export default function LayananSuratPage() {
 
           <button
             onClick={() => setActiveTab("saya")}
-            className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-3 rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 ${
+            className={`flex-1 min-w-[130px] flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 ${
               activeTab === "saya"
-                ? "bg-[#004329] text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100"
+                ? "bg-[#063321] text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             <User className="w-4 h-4" />

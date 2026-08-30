@@ -67,54 +67,10 @@ export const defaultInfografisData: InfografisData = {
   updated_at: new Date().toISOString(),
 };
 
-// Helper to get from client-side localStorage
-export function getLocalInfografis(): InfografisData {
-  if (typeof window === "undefined") return defaultInfografisData;
-  try {
-    const raw = localStorage.getItem("local_infografis_desa");
-    if (!raw) return defaultInfografisData;
-    const parsed = JSON.parse(raw);
-    return {
-      ...defaultInfografisData,
-      ...parsed,
-      demografi: { ...defaultInfografisData.demografi, ...(parsed.demografi || {}) },
-      pekerjaan: parsed.pekerjaan || defaultInfografisData.pekerjaan,
-      pendidikan: parsed.pendidikan || defaultInfografisData.pendidikan,
-      apbdes: {
-        ...defaultInfografisData.apbdes,
-        ...(parsed.apbdes || {}),
-        pendapatan_rincian: parsed.apbdes?.pendapatan_rincian || defaultInfografisData.apbdes.pendapatan_rincian,
-        belanja_rincian: parsed.apbdes?.belanja_rincian || defaultInfografisData.apbdes.belanja_rincian,
-      },
-      idm: {
-        ...defaultInfografisData.idm,
-        ...(parsed.idm || {}),
-        iks: { ...defaultInfografisData.idm.iks, ...(parsed.idm?.iks || {}) },
-        ike: { ...defaultInfografisData.idm.ike, ...(parsed.idm?.ike || {}) },
-        ikl: { ...defaultInfografisData.idm.ikl, ...(parsed.idm?.ikl || {}) },
-        riwayat: parsed.idm?.riwayat || defaultInfografisData.idm.riwayat,
-        faktor_pendukung: parsed.idm?.faktor_pendukung || defaultInfografisData.idm.faktor_pendukung,
-      },
-    };
-  } catch {
-    return defaultInfografisData;
-  }
-}
-
-// Helper to save to client-side localStorage
-export function saveLocalInfografis(data: InfografisData) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem("local_infografis_desa", JSON.stringify(data));
-  } catch (err) {
-    console.error("Failed to save local infografis:", err);
-  }
-}
-
 export async function fetchInfografisData(): Promise<InfografisData> {
-  const local = getLocalInfografis();
-
   try {
+    if (!supabase) return defaultInfografisData;
+
     const { data, error } = await supabase
       .from("infografis")
       .select("*")
@@ -122,71 +78,50 @@ export async function fetchInfografisData(): Promise<InfografisData> {
       .maybeSingle();
 
     if (error || !data) {
-      return local;
+      return defaultInfografisData;
     }
 
-    const merged: InfografisData = {
-      demografi: data.demografi || local.demografi,
-      pekerjaan: data.pekerjaan || local.pekerjaan,
-      pendidikan: data.pendidikan || local.pendidikan,
-      apbdes: data.apbdes || local.apbdes,
-      idm: data.idm || local.idm,
-      updated_at: data.updated_at || local.updated_at,
+    return {
+      demografi: data.demografi || defaultInfografisData.demografi,
+      pekerjaan: data.pekerjaan || defaultInfografisData.pekerjaan,
+      pendidikan: data.pendidikan || defaultInfografisData.pendidikan,
+      apbdes: data.apbdes || defaultInfografisData.apbdes,
+      idm: data.idm || defaultInfografisData.idm,
+      updated_at: data.updated_at || defaultInfografisData.updated_at,
     };
-
-    saveLocalInfografis(merged);
-    return merged;
   } catch (err) {
-    console.warn("fetchInfografisData warning (using local):", err);
-    return local;
+    console.error("fetchInfografisData error:", err);
+    return defaultInfografisData;
   }
 }
 
 export async function updateInfografisData(
   newData: Partial<InfografisData>
 ): Promise<{ success: boolean; error?: string }> {
-  const current = getLocalInfografis();
-  const updated: InfografisData = {
-    ...current,
-    ...newData,
-    demografi: { ...current.demografi, ...(newData.demografi || {}) },
-    pekerjaan: newData.pekerjaan || current.pekerjaan,
-    pendidikan: newData.pendidikan || current.pendidikan,
-    apbdes: {
-      ...current.apbdes,
-      ...(newData.apbdes || {}),
-      pendapatan_rincian: newData.apbdes?.pendapatan_rincian || current.apbdes.pendapatan_rincian,
-      belanja_rincian: newData.apbdes?.belanja_rincian || current.apbdes.belanja_rincian,
-    },
-    idm: {
-      ...current.idm,
-      ...(newData.idm || {}),
-      iks: { ...current.idm.iks, ...(newData.idm?.iks || {}) },
-      ike: { ...current.idm.ike, ...(newData.idm?.ike || {}) },
-      ikl: { ...current.idm.ikl, ...(newData.idm?.ikl || {}) },
-      riwayat: newData.idm?.riwayat || current.idm.riwayat,
-      faktor_pendukung: newData.idm?.faktor_pendukung || current.idm.faktor_pendukung,
-    },
-    updated_at: new Date().toISOString(),
-  };
-
-  // 1. Save to local storage immediately
-  saveLocalInfografis(updated);
-
-  // 2. Sync to Supabase
   try {
-    await supabase.from("infografis").upsert({
-      id: "main",
-      demografi: updated.demografi,
-      pekerjaan: updated.pekerjaan,
-      pendidikan: updated.pendidikan,
-      apbdes: updated.apbdes,
-      idm: updated.idm,
-      updated_at: updated.updated_at,
-    });
-  } catch (err) {
-    console.warn("Supabase updateInfografisData warning:", err);
-  }
+    if (!supabase) return { success: false, error: "Database client is not available." };
 
-  return { success: true };
+    const current = await fetchInfografisData();
+    const updatedPayload = {
+      id: "main",
+      demografi: newData.demografi || current.demografi,
+      pekerjaan: newData.pekerjaan || current.pekerjaan,
+      pendidikan: newData.pendidikan || current.pendidikan,
+      apbdes: newData.apbdes || current.apbdes,
+      idm: newData.idm || current.idm,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase.from("infografis").upsert(updatedPayload);
+
+    if (error) {
+      console.error("updateInfografisData error:", error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat memperbarui infografis.";
+    return { success: false, error: msg };
+  }
 }

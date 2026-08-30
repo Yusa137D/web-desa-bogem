@@ -10,7 +10,6 @@ import {
   GraduationCap,
   ArrowUpRight,
   TrendingUp,
-  Sparkles,
   ArrowLeft,
   Calendar,
   CheckCircle2,
@@ -18,7 +17,6 @@ import {
 import Link from "next/link";
 import {
   fetchInfografisData,
-  getLocalInfografis,
   defaultInfografisData,
 } from "@/services/infografisService";
 import { InfografisData } from "@/types/infografis";
@@ -30,13 +28,6 @@ export default function InfografisPage() {
   const [data, setData] = useState<InfografisData>(defaultInfografisData);
 
   useEffect(() => {
-    // 1. Immediate client cache hydration
-    const local = getLocalInfografis();
-    if (local) {
-      setData(local);
-    }
-
-    // 2. Fetch latest data
     async function loadData() {
       try {
         const remote = await fetchInfografisData();
@@ -46,18 +37,6 @@ export default function InfografisPage() {
       }
     }
     loadData();
-
-    const handleUpdate = () => {
-      loadData();
-    };
-
-    window.addEventListener("local_infografis_updated", handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-
-    return () => {
-      window.removeEventListener("local_infografis_updated", handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-    };
   }, []);
 
   const { demografi, pekerjaan, pendidikan, apbdes } = data;
@@ -72,52 +51,49 @@ export default function InfografisPage() {
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
         
         {/* Banner Section */}
-        <div className="bg-gradient-to-br from-[#00321F] via-[#004A2F] to-[#006643] rounded-3xl p-6 sm:p-10 lg:p-12 text-white shadow-xl relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none">
-            <PieChart className="w-80 h-80 sm:w-96 sm:h-96 text-white" />
-          </div>
+        <div className="bg-[#073623] rounded-3xl p-6 sm:p-8 lg:p-10 text-white shadow-sm relative overflow-hidden">
           <div className="relative z-10 max-w-3xl space-y-3 sm:space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2.5">
               <Link
                 href="/"
-                className="inline-flex items-center space-x-1.5 bg-white/10 hover:bg-white/20 text-emerald-200 hover:text-white px-3 py-1 rounded-full text-xs font-bold transition backdrop-blur border border-emerald-400/20 active:scale-95"
+                className="inline-flex items-center space-x-1.5 bg-white/10 hover:bg-white/20 text-emerald-100 hover:text-white px-3 py-1 rounded-full text-xs font-semibold transition border border-white/10 active:scale-95"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Kembali ke Beranda</span>
               </Link>
-              <div className="inline-flex items-center space-x-2 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Visualisasi Data Desa</span>
+              <div className="inline-flex items-center space-x-2 bg-emerald-800/80 border border-emerald-500/40 text-emerald-100 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                <PieChart className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Statistik & Visualisasi Data</span>
               </div>
             </div>
 
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
               Infografis Desa Bogem
             </h1>
-            <p className="text-emerald-100/90 text-xs sm:text-sm lg:text-base leading-relaxed">
+            <p className="text-emerald-100/85 text-xs sm:text-sm lg:text-base leading-relaxed">
               Sajian statistik transparan mengenai demografi kependudukan, mata pencaharian, tingkat pendidikan, dan struktur keuangan APBDes Pemerintah Desa Bogem.
             </p>
 
-            <div className="flex flex-wrap gap-3 pt-2">
+            <div className="flex flex-wrap gap-3 pt-1">
               <Link
                 href="/infografis/idm"
-                className="inline-flex items-center space-x-2 bg-emerald-400 hover:bg-emerald-300 text-[#00321F] font-bold text-xs px-4 py-2.5 rounded-xl transition shadow active:scale-95"
+                className="inline-flex items-center space-x-2 bg-white text-[#063321] hover:bg-emerald-50 font-bold text-xs px-4 py-2 rounded-xl transition shadow-sm active:scale-95"
               >
                 <span>Lihat Status IDM Desa</span>
-                <ArrowUpRight className="w-4 h-4" />
+                <ArrowUpRight className="w-4 h-4 text-emerald-700" />
               </Link>
             </div>
           </div>
         </div>
 
         {/* Navigation Tabs with horizontal scroll on mobile */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none bg-white p-2 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
           <button
             onClick={() => setActiveTab("penduduk")}
-            className={`flex items-center space-x-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 ${
+            className={`flex items-center space-x-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 shadow-sm ${
               activeTab === "penduduk"
-                ? "bg-[#004329] text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100"
+                ? "bg-[#063321] text-white"
+                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80"
             }`}
           >
             <Users className="w-4 h-4" />
@@ -125,10 +101,10 @@ export default function InfografisPage() {
           </button>
           <button
             onClick={() => setActiveTab("pekerjaan")}
-            className={`flex items-center space-x-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 ${
+            className={`flex items-center space-x-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 shadow-sm ${
               activeTab === "pekerjaan"
-                ? "bg-[#004329] text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100"
+                ? "bg-[#063321] text-white"
+                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80"
             }`}
           >
             <Briefcase className="w-4 h-4" />
@@ -136,10 +112,10 @@ export default function InfografisPage() {
           </button>
           <button
             onClick={() => setActiveTab("apbd")}
-            className={`flex items-center space-x-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 ${
+            className={`flex items-center space-x-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 shadow-sm ${
               activeTab === "apbd"
-                ? "bg-[#004329] text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100"
+                ? "bg-[#063321] text-white"
+                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80"
             }`}
           >
             <Wallet className="w-4 h-4" />

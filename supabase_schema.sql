@@ -1,5 +1,5 @@
 -- ==============================================================================
--- SKRIP MIGRASI DATABASE SUPABASE LENGKAP - WEB DESA BOGEM (MAGETAN)
+-- SKRIP MIGRASI DATABASE SUPABASE LENGKAP & AMAN - WEB DESA BOGEM (MAGETAN)
 -- ==============================================================================
 -- CARA PENGGUNAAN:
 -- 1. Buka Dashboard Supabase Anda: https://supabase.com/dashboard
@@ -8,7 +8,19 @@
 -- 4. Klik "New Query", tempelkan (paste) seluruh skrip di bawah ini, lalu klik "Run" (atau Ctrl + Enter)
 -- ==============================================================================
 
--- 1. TABEL 'infografis' (Demografi Kependudukan, Pekerjaan, Pendidikan, APBDes & Status IDM)
+-- 1. TABEL 'profiles' (Profil Akun Warga & Perangkat Desa)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nik TEXT UNIQUE,
+  nama TEXT NOT NULL,
+  no_hp TEXT,
+  email TEXT,
+  role TEXT DEFAULT 'warga', -- 'admin' | 'warga'
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. TABEL 'infografis' (Demografi Kependudukan, Pekerjaan, Pendidikan, APBDes & Status IDM)
 CREATE TABLE IF NOT EXISTS public.infografis (
   id TEXT PRIMARY KEY DEFAULT 'main',
   demografi JSONB DEFAULT '{}'::jsonb,
@@ -19,44 +31,39 @@ CREATE TABLE IF NOT EXISTS public.infografis (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. TABEL 'opsi_surat' (Pilihan Jenis Surat & Form Builder Dinamis yang Dikelola Admin)
+-- 3. TABEL 'opsi_surat' (Pilihan Jenis Surat & Form Builder Dinamis yang Dikelola Admin)
 CREATE TABLE IF NOT EXISTS public.opsi_surat (
   id TEXT PRIMARY KEY,
   nama_surat TEXT NOT NULL,
   deskripsi TEXT,
   syarat TEXT,
-  custom_fields JSONB DEFAULT '[]'::jsonb, -- Kolom formulir dinamis yang diatur admin
+  custom_fields JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. TABEL 'permohonan_surat' (Data Pengajuan Surat Warga, Isian Form, & File Hasil Surat)
+-- 4. TABEL 'permohonan_surat' (Data Pengajuan Surat Warga, Isian Form, & File Hasil Surat)
 CREATE TABLE IF NOT EXISTS public.permohonan_surat (
   id TEXT PRIMARY KEY, -- Kode Tiket (misal: SRT-202508-4921)
-  user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- Relasi ke Akun Warga
-  opsi_surat_id TEXT REFERENCES public.opsi_surat(id) ON DELETE SET NULL, -- Relasi ke Master Jenis Surat
+  user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  opsi_surat_id TEXT REFERENCES public.opsi_surat(id) ON DELETE SET NULL,
   nik TEXT NOT NULL,
   nama_lengkap TEXT NOT NULL,
   no_whatsapp TEXT NOT NULL,
   email TEXT,
   jenis_surat TEXT NOT NULL,
-  data_formulir JSONB DEFAULT '{}'::jsonb, -- Data isian dinamis pemohon sesuai kolom form surat
+  data_formulir JSONB DEFAULT '{}'::jsonb,
   status TEXT NOT NULL DEFAULT 'MENUNGGU', -- 'MENUNGGU' | 'DIPROSES' | 'SELESAI' | 'DITOLAK'
-  file_surat_selesai TEXT, -- Link file atau Data URL dokumen jadi yang diupload admin
+  file_surat_selesai TEXT,
   nama_file_selesai TEXT,
   catatan_admin TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Migrasi relasi Foreign Key jika tabel permohonan_surat sudah ada sebelumnya:
-ALTER TABLE public.permohonan_surat ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
-ALTER TABLE public.permohonan_surat ADD COLUMN IF NOT EXISTS opsi_surat_id TEXT REFERENCES public.opsi_surat(id) ON DELETE SET NULL;
-ALTER TABLE public.permohonan_surat ADD COLUMN IF NOT EXISTS data_formulir JSONB DEFAULT '{}'::jsonb;
-
--- 4. TABEL 'berita' (Kabar Publik & Warta Desa)
+-- 5. TABEL 'berita' (Kabar Publik & Warta Desa)
 CREATE TABLE IF NOT EXISTS public.berita (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL, -- Relasi ke Akun Penulis / Admin
+  author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   judul TEXT NOT NULL,
   kategori TEXT DEFAULT 'Pengumuman Resmi',
   penulis TEXT DEFAULT 'Pemerintah Desa Bogem',
@@ -66,10 +73,7 @@ CREATE TABLE IF NOT EXISTS public.berita (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Migrasi relasi Foreign Key jika tabel berita sudah ada sebelumnya:
-ALTER TABLE public.berita ADD COLUMN IF NOT EXISTS author_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
-
--- 5. TABEL 'umkm' (Etalase Produk Unggulan Warga)
+-- 6. TABEL 'umkm' (Etalase Produk Unggulan Warga)
 CREATE TABLE IF NOT EXISTS public.umkm (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   nama_usaha TEXT NOT NULL,
@@ -77,16 +81,13 @@ CREATE TABLE IF NOT EXISTS public.umkm (
   deskripsi TEXT NOT NULL,
   kategori TEXT NOT NULL DEFAULT 'Makanan & Minuman',
   kontak TEXT,
-  alamat TEXT, -- Alamat / Lokasi Usaha di Desa (Dusun, RT/RW)
+  alamat TEXT,
   harga TEXT,
   gambar TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Migrasi kolom alamat jika tabel umkm sudah ada sebelumnya:
-ALTER TABLE public.umkm ADD COLUMN IF NOT EXISTS alamat TEXT;
-
--- 6. TABEL 'perangkat_desa' (Struktur SOTK & Aparatur Pemerintahan)
+-- 7. TABEL 'perangkat_desa' (Struktur SOTK & Aparatur Pemerintahan)
 CREATE TABLE IF NOT EXISTS public.perangkat_desa (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   nama TEXT NOT NULL,
@@ -97,7 +98,7 @@ CREATE TABLE IF NOT EXISTS public.perangkat_desa (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. TABEL 'profil_desa' (Visi, Misi, Sambutan, Bagan Organisasi, Sejarah, Geografis, Kontak & Jam Layanan)
+-- 8. TABEL 'profil_desa' (Visi, Misi, Sambutan, Bagan Organisasi, Sejarah, Geografis, Kontak & Jam Layanan)
 CREATE TABLE IF NOT EXISTS public.profil_desa (
   id TEXT PRIMARY KEY DEFAULT 'main',
   visi TEXT,
@@ -105,9 +106,9 @@ CREATE TABLE IF NOT EXISTS public.profil_desa (
   nama_kades TEXT,
   foto_kades TEXT,
   sambutan_kades TEXT,
-  bagan_desa_image TEXT, -- Foto Bagan Struktur Pemerintahan Desa
-  bagan_bpd_image TEXT,  -- Foto Bagan Struktur Organisasi BPD
-  sejarah TEXT,          -- Narasi Sejarah Desa
+  bagan_desa_image TEXT,
+  bagan_bpd_image TEXT,
+  sejarah TEXT,
   luas_wilayah TEXT DEFAULT '245 Ha',
   jumlah_penduduk TEXT DEFAULT '3.620 Jiwa',
   ketinggian TEXT DEFAULT '± 78 mdpl',
@@ -120,26 +121,9 @@ CREATE TABLE IF NOT EXISTS public.profil_desa (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Migrasi kolom profil desa jika tabel sudah ada sebelumnya:
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS bagan_desa_image TEXT;
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS bagan_bpd_image TEXT;
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS sejarah TEXT;
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS luas_wilayah TEXT DEFAULT '245 Ha';
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS jumlah_penduduk TEXT DEFAULT '3.620 Jiwa';
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS ketinggian TEXT DEFAULT '± 78 mdpl';
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS batas_wilayah JSONB DEFAULT '{"utara": "Desa Tladan / Genengan", "timur": "Desa Pojok / Kawedanan", "selatan": "Desa Giripurno", "barat": "Desa Sugihrejo"}'::jsonb;
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS jam_pelayanan TEXT DEFAULT 'Senin - Jumat: 08.00 - 15.00 WIB';
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS jam_pelayanan_note TEXT DEFAULT '*Sabtu & Minggu: Libur / Pelayanan Darurat';
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS alamat_kantor TEXT DEFAULT 'Jl. Bakti Mulya No. 241, Desa Bogem, Kec. Kawedanan, Kab. Magetan';
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS telepon_kantor TEXT DEFAULT '+62 812-3456-7890';
-ALTER TABLE public.profil_desa ADD COLUMN IF NOT EXISTS email_kantor TEXT DEFAULT 'info@desabogem.id';
-
-
 -- ==============================================================================
--- SEED DATA DEFAULT (Inisialisasi Data Awal jika Tabel Masih Kosong)
+-- SEED DATA DEFAULT (Inisialisasi jika Tabel Kosong)
 -- ==============================================================================
-
--- Inisialisasi Data Infografis Default
 INSERT INTO public.infografis (id, demografi, pekerjaan, pendidikan, apbdes, idm, updated_at)
 VALUES (
   'main',
@@ -200,7 +184,6 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
--- Inisialisasi Pilihan Opsi Surat Default
 INSERT INTO public.opsi_surat (id, nama_surat, deskripsi, syarat)
 VALUES
   ('opsi-1', 'Surat Keterangan Usaha (SKU)', 'Untuk legalitas pembukaan rekening usaha, pengajuan pinjaman/KUR, atau verifikasi UMKM.', 'Fotokopi KTP & KK, Nama Usaha, Jenis Usaha, dan Alamat Lokasi Usaha.'),
@@ -211,7 +194,6 @@ VALUES
   ('opsi-6', 'Surat Keterangan Kelahiran / Kematian', 'Surat pengantar pelaporan kelahiran atau kematian untuk pencatatan kependudukan.', 'Surat Keterangan Bidan/RS, KTP & KK.')
 ON CONFLICT (id) DO NOTHING;
 
--- Inisialisasi Data Profil Desa
 INSERT INTO public.profil_desa (id, visi, misi, nama_kades, sambutan_kades, updated_at)
 VALUES (
   'main',
@@ -229,63 +211,8 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- ==============================================================================
--- AKTIFKAN ROW LEVEL SECURITY (RLS) & KEBIJAKAN AKSES
+-- TRIGGER OTOMATIS: SINKRONISASI USER DARI auth.users KE public.profiles
 -- ==============================================================================
-ALTER TABLE public.infografis ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.opsi_surat ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.permohonan_surat ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.berita ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.umkm ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.perangkat_desa ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profil_desa ENABLE ROW LEVEL SECURITY;
-
--- Reset kebijakan lama jika ada
-DROP POLICY IF EXISTS "Allow public read infografis" ON public.infografis;
-DROP POLICY IF EXISTS "Allow public read opsi_surat" ON public.opsi_surat;
-DROP POLICY IF EXISTS "Allow public read permohonan_surat" ON public.permohonan_surat;
-DROP POLICY IF EXISTS "Allow public read berita" ON public.berita;
-DROP POLICY IF EXISTS "Allow public read umkm" ON public.umkm;
-DROP POLICY IF EXISTS "Allow public read perangkat_desa" ON public.perangkat_desa;
-DROP POLICY IF EXISTS "Allow public read profil_desa" ON public.profil_desa;
-
-DROP POLICY IF EXISTS "Allow write infografis" ON public.infografis;
-DROP POLICY IF EXISTS "Allow write opsi_surat" ON public.opsi_surat;
-DROP POLICY IF EXISTS "Allow write permohonan_surat" ON public.permohonan_surat;
-DROP POLICY IF EXISTS "Allow write berita" ON public.berita;
-DROP POLICY IF EXISTS "Allow write umkm" ON public.umkm;
-DROP POLICY IF EXISTS "Allow write perangkat_desa" ON public.perangkat_desa;
-DROP POLICY IF EXISTS "Allow write profil_desa" ON public.profil_desa;
-
--- Kebijakan Akses Baca Publik (Select)
-CREATE POLICY "Allow public read infografis" ON public.infografis FOR SELECT USING (true);
-CREATE POLICY "Allow public read opsi_surat" ON public.opsi_surat FOR SELECT USING (true);
-CREATE POLICY "Allow public read permohonan_surat" ON public.permohonan_surat FOR SELECT USING (true);
-CREATE POLICY "Allow public read berita" ON public.berita FOR SELECT USING (true);
-CREATE POLICY "Allow public read umkm" ON public.umkm FOR SELECT USING (true);
-CREATE POLICY "Allow public read perangkat_desa" ON public.perangkat_desa FOR SELECT USING (true);
-CREATE POLICY "Allow public read profil_desa" ON public.profil_desa FOR SELECT USING (true);
-
--- 8. TABEL 'profiles' (Profil Akun Warga & Perangkat Desa Terverifikasi NIK)
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  nik TEXT UNIQUE,
-  nama TEXT NOT NULL,
-  no_hp TEXT,
-  email TEXT,
-  role TEXT DEFAULT 'warga',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nik TEXT;
-
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow public read profiles" ON public.profiles;
-DROP POLICY IF EXISTS "Allow write profiles" ON public.profiles;
-CREATE POLICY "Allow public read profiles" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Allow write profiles" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
-
--- 9. TRIGGER OTOMATIS: Sinkronisasi Akun dari auth.users ke public.profiles
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -300,9 +227,8 @@ BEGIN
   )
   ON CONFLICT (id) DO UPDATE SET
     nama = EXCLUDED.nama,
-    nik = EXCLUDED.nik,
-    no_hp = EXCLUDED.no_hp,
-    role = EXCLUDED.role,
+    nik = COALESCE(EXCLUDED.nik, profiles.nik),
+    no_hp = COALESCE(EXCLUDED.no_hp, profiles.no_hp),
     updated_at = NOW();
   RETURN NEW;
 END;
@@ -313,11 +239,143 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT OR UPDATE ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Kebijakan Akses Tulis & Update (Insert, Update, Delete)
-CREATE POLICY "Allow write infografis" ON public.infografis FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow write opsi_surat" ON public.opsi_surat FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow write permohonan_surat" ON public.permohonan_surat FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow write berita" ON public.berita FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow write umkm" ON public.umkm FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow write perangkat_desa" ON public.perangkat_desa FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow write profil_desa" ON public.profil_desa FOR ALL USING (true) WITH CHECK (true);
+-- ==============================================================================
+-- KEAMANAN: ROW LEVEL SECURITY (RLS) & POLICY AKSES KETAT
+-- ==============================================================================
+
+-- 1. Fungsi Pembantu: Mengecek apakah user adalah Admin Desa
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 2. Aktifkan RLS pada seluruh tabel
+ALTER TABLE public.infografis ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.opsi_surat ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.permohonan_surat ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.berita ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.umkm ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.perangkat_desa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profil_desa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- 3. Reset seluruh policy lama jika ada
+DROP POLICY IF EXISTS "Allow public read infografis" ON public.infografis;
+DROP POLICY IF EXISTS "Allow write infografis" ON public.infografis;
+DROP POLICY IF EXISTS "Public read infografis" ON public.infografis;
+DROP POLICY IF EXISTS "Admin write infografis" ON public.infografis;
+
+DROP POLICY IF EXISTS "Allow public read opsi_surat" ON public.opsi_surat;
+DROP POLICY IF EXISTS "Allow write opsi_surat" ON public.opsi_surat;
+DROP POLICY IF EXISTS "Public read opsi_surat" ON public.opsi_surat;
+DROP POLICY IF EXISTS "Admin write opsi_surat" ON public.opsi_surat;
+
+DROP POLICY IF EXISTS "Allow public read berita" ON public.berita;
+DROP POLICY IF EXISTS "Allow write berita" ON public.berita;
+DROP POLICY IF EXISTS "Public read berita" ON public.berita;
+DROP POLICY IF EXISTS "Admin write berita" ON public.berita;
+
+DROP POLICY IF EXISTS "Allow public read umkm" ON public.umkm;
+DROP POLICY IF EXISTS "Allow write umkm" ON public.umkm;
+DROP POLICY IF EXISTS "Public read umkm" ON public.umkm;
+DROP POLICY IF EXISTS "Admin write umkm" ON public.umkm;
+
+DROP POLICY IF EXISTS "Allow public read perangkat_desa" ON public.perangkat_desa;
+DROP POLICY IF EXISTS "Allow write perangkat_desa" ON public.perangkat_desa;
+DROP POLICY IF EXISTS "Public read perangkat_desa" ON public.perangkat_desa;
+DROP POLICY IF EXISTS "Admin write perangkat_desa" ON public.perangkat_desa;
+
+DROP POLICY IF EXISTS "Allow public read profil_desa" ON public.profil_desa;
+DROP POLICY IF EXISTS "Allow write profil_desa" ON public.profil_desa;
+DROP POLICY IF EXISTS "Public read profil_desa" ON public.profil_desa;
+DROP POLICY IF EXISTS "Admin write profil_desa" ON public.profil_desa;
+
+DROP POLICY IF EXISTS "Allow public read permohonan_surat" ON public.permohonan_surat;
+DROP POLICY IF EXISTS "Allow write permohonan_surat" ON public.permohonan_surat;
+DROP POLICY IF EXISTS "Warga view own surat" ON public.permohonan_surat;
+DROP POLICY IF EXISTS "Public insert surat" ON public.permohonan_surat;
+DROP POLICY IF EXISTS "Admin update delete surat" ON public.permohonan_surat;
+DROP POLICY IF EXISTS "Admin delete surat" ON public.permohonan_surat;
+
+DROP POLICY IF EXISTS "Allow public read profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow write profiles" ON public.profiles;
+DROP POLICY IF EXISTS "User view own profile or admin" ON public.profiles;
+DROP POLICY IF EXISTS "User update own profile" ON public.profiles;
+
+-- 4. Kebijakan Tabel Publik (Hanya BACA untuk Umum, TULIS untuk Admin)
+CREATE POLICY "Public read infografis" ON public.infografis FOR SELECT USING (true);
+CREATE POLICY "Admin write infografis" ON public.infografis FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+CREATE POLICY "Public read opsi_surat" ON public.opsi_surat FOR SELECT USING (true);
+CREATE POLICY "Admin write opsi_surat" ON public.opsi_surat FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+CREATE POLICY "Public read berita" ON public.berita FOR SELECT USING (true);
+CREATE POLICY "Admin write berita" ON public.berita FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+CREATE POLICY "Public read umkm" ON public.umkm FOR SELECT USING (true);
+CREATE POLICY "Admin write umkm" ON public.umkm FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+CREATE POLICY "Public read perangkat_desa" ON public.perangkat_desa FOR SELECT USING (true);
+CREATE POLICY "Admin write perangkat_desa" ON public.perangkat_desa FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+CREATE POLICY "Public read profil_desa" ON public.profil_desa FOR SELECT USING (true);
+CREATE POLICY "Admin write profil_desa" ON public.profil_desa FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+-- 5. Kebijakan Tabel Sensitif: Permohonan Surat
+-- Warga hanya boleh melihat surat milik mereka sendiri; Admin bisa melihat semua
+CREATE POLICY "Warga view own surat" ON public.permohonan_surat
+FOR SELECT USING (
+  (auth.uid() IS NOT NULL AND auth.uid() = user_id) OR public.is_admin()
+);
+
+-- Siapapun (Warga login / Pengunjung yang mengajukan permohonan) boleh memasukkan pengajuan
+CREATE POLICY "Public insert surat" ON public.permohonan_surat
+FOR INSERT WITH CHECK (true);
+
+-- Hanya Admin Desa yang boleh mengubah status surat atau menghapus pengajuan
+CREATE POLICY "Admin update delete surat" ON public.permohonan_surat
+FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+CREATE POLICY "Admin delete surat" ON public.permohonan_surat
+FOR DELETE USING (public.is_admin());
+
+-- 6. Kebijakan Tabel Profiles
+-- User hanya bisa melihat profilnya sendiri atau admin bisa melihat semua profil
+CREATE POLICY "User view own profile or admin" ON public.profiles
+FOR SELECT USING (
+  auth.uid() = id OR public.is_admin()
+);
+
+CREATE POLICY "User update own profile" ON public.profiles
+FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+-- ==============================================================================
+-- KONFIGURASI STORAGE BUCKET 'public-images'
+-- ==============================================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('public-images', 'public-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Public view images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin upload images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin update images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin delete images" ON storage.objects;
+
+-- Publik boleh melihat gambar di bucket 'public-images'
+CREATE POLICY "Public view images" ON storage.objects
+FOR SELECT USING (bucket_id = 'public-images');
+
+-- Pengguna terautentikasi atau Admin boleh mengunggah file
+CREATE POLICY "Admin upload images" ON storage.objects
+FOR INSERT WITH CHECK (bucket_id = 'public-images' AND (auth.role() = 'authenticated' OR public.is_admin()));
+
+CREATE POLICY "Admin update images" ON storage.objects
+FOR UPDATE USING (bucket_id = 'public-images' AND public.is_admin());
+
+CREATE POLICY "Admin delete images" ON storage.objects
+FOR DELETE USING (bucket_id = 'public-images' AND public.is_admin());

@@ -7,15 +7,12 @@ import {
   Newspaper,
   User,
   Home,
-  Menu,
-  X,
   ShoppingBag,
   PieChart,
   Award,
   FileText,
   LogIn,
   LogOut,
-  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -40,24 +37,24 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="bg-[#00321F] text-white sticky top-0 z-50 shadow-md">
+    <header className="bg-[#063321] text-white sticky top-0 z-50 shadow-sm border-b border-emerald-900/40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20">
           
           {/* Logo & Brand Info */}
-          <Link href="/" className="flex items-center space-x-2.5 sm:space-x-3.5 group">
+          <Link href="/" className="flex items-center space-x-3 group">
             <div className="relative w-8 h-10 sm:w-10 sm:h-12 flex-shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
               <img
                 src="/images/logo-magetan.png"
                 alt="Logo Kabupaten Magetan"
-                className="w-full h-full object-contain drop-shadow-md"
+                className="w-full h-full object-contain drop-shadow"
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-base sm:text-lg lg:text-xl font-extrabold tracking-tight text-white group-hover:text-emerald-200 transition leading-tight">
+              <span className="text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-emerald-300 transition leading-tight">
                 Web Desa Bogem
               </span>
-              <span className="text-[10px] sm:text-xs text-emerald-200/90 font-medium">
+              <span className="text-[10px] sm:text-xs text-emerald-300/80 font-normal">
                 Kec. Kawedanan, Kab. Magetan
               </span>
             </div>
@@ -74,25 +71,25 @@ export default function Navbar() {
                   key={link.href}
                   href={link.href}
                   prefetch={true}
-                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                     isActive
-                      ? "bg-emerald-700/80 text-white shadow-inner"
+                      ? "bg-emerald-800 text-white shadow-sm"
                       : link.isHighlighted
-                      ? "bg-emerald-600/40 text-emerald-200 hover:bg-emerald-600 hover:text-white border border-emerald-400/30"
-                      : "text-emerald-100/90 hover:bg-emerald-800/60 hover:text-white"
+                      ? "bg-emerald-700/60 text-emerald-100 hover:bg-emerald-700 hover:text-white border border-emerald-500/30"
+                      : "text-emerald-100/90 hover:bg-emerald-800/40 hover:text-white"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   <span>{link.name}</span>
                 </Link>
               );
             })}
 
             {/* User Profile Pill on Desktop */}
-            <div className="pl-2 border-l border-emerald-800/80">
+            <div className="pl-3 border-l border-emerald-800/60 ml-2">
               {user ? (
-                <div className="flex items-center space-x-2 bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-800/80 text-xs">
-                  <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[10px]">
+                <div className="flex items-center space-x-2 bg-emerald-950/70 px-3 py-1.5 rounded-xl border border-emerald-800/70 text-xs">
+                  <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px]">
                     {user.name.charAt(0)}
                   </div>
                   <div className="flex flex-col">
@@ -110,7 +107,7 @@ export default function Navbar() {
               ) : (
                 <Link
                   href="/login"
-                  className="flex items-center space-x-1.5 bg-emerald-600/30 hover:bg-emerald-600 hover:text-white text-emerald-200 px-3 py-2 rounded-xl text-xs font-bold transition border border-emerald-500/40"
+                  className="flex items-center space-x-1.5 bg-emerald-700 hover:bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm active:scale-95"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   <span>Masuk</span>
@@ -119,39 +116,50 @@ export default function Navbar() {
             </div>
           </nav>
 
-          {/* Mobile & Tablet Hamburger Button */}
+          {/* Mobile & Tablet 2-Line Animated Hamburger Button */}
           <div className="lg:hidden flex items-center space-x-2">
             {user && (
-              <div className="flex items-center space-x-1.5 bg-emerald-950/60 px-2.5 py-1 rounded-xl border border-emerald-800/80 text-xs">
+              <div className="flex items-center space-x-1.5 bg-emerald-950/60 px-2.5 py-1 rounded-xl text-xs">
                 <span className="font-bold text-emerald-200 text-[11px] max-w-[80px] truncate">{user.name}</span>
               </div>
             )}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="p-2.5 rounded-xl text-emerald-200 hover:text-white hover:bg-emerald-800/60 focus:outline-none active:scale-95 transition"
+              className="relative w-10 h-10 flex flex-col items-center justify-center gap-1.5 focus:outline-none select-none active:scale-90 transition-transform duration-200"
               aria-label="Toggle Navigation"
             >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {/* Line 1 (Top) */}
+              <span
+                className={`w-5 h-[2px] bg-emerald-100 rounded-full transition-transform duration-300 ease-in-out origin-center ${
+                  isOpen ? "translate-y-[4px] rotate-45 bg-white" : ""
+                }`}
+              />
+              {/* Line 2 (Bottom) */}
+              <span
+                className={`w-5 h-[2px] bg-emerald-100 rounded-full transition-transform duration-300 ease-in-out origin-center ${
+                  isOpen ? "-translate-y-[4px] -rotate-45 bg-white" : ""
+                }`}
+              />
             </button>
           </div>
 
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer Menu (Borderless, Smooth Flow) */}
       {isOpen && (
-        <div className="lg:hidden bg-[#002819] border-t border-emerald-800/60 px-4 pt-3 pb-6 space-y-2 animate-in slide-in-from-top-2 duration-200 shadow-2xl">
+        <div className="lg:hidden bg-[#063321] px-4 pt-2 pb-6 space-y-1.5 animate-in slide-in-from-top-2 fade-in duration-300 ease-out shadow-lg">
           
           {/* Mobile User Profile Header */}
           {user ? (
-            <div className="bg-[#003823] p-3.5 rounded-2xl border border-emerald-800/80 flex items-center justify-between mb-3">
+            <div className="bg-emerald-950/50 p-3.5 rounded-2xl flex items-center justify-between mb-3">
               <div className="flex items-center space-x-3 text-xs">
-                <div className="w-9 h-9 rounded-xl bg-[#004329] text-white flex items-center justify-center font-bold text-sm border border-emerald-500/30">
+                <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold text-sm">
                   {user.name.charAt(0)}
                 </div>
                 <div>
                   <span className="font-bold text-white block">{user.name}</span>
-                  <span className="text-[11px] text-emerald-300">
+                  <span className="text-[11px] text-emerald-300/90">
                     {user.nik ? `NIK: ${user.nik}` : user.email}
                   </span>
                 </div>
@@ -161,7 +169,7 @@ export default function Navbar() {
                   logout();
                   setIsOpen(false);
                 }}
-                className="bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-800/60 transition flex items-center space-x-1"
+                className="bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center space-x-1"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Keluar</span>
@@ -172,15 +180,15 @@ export default function Navbar() {
               <Link
                 href="/login"
                 onClick={() => setIsOpen(false)}
-                className="bg-[#004329] text-white text-center py-2.5 rounded-xl text-xs font-bold border border-emerald-600/40 flex items-center justify-center space-x-1.5"
+                className="bg-emerald-700 hover:bg-emerald-600 text-white text-center py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5"
               >
-                <LogIn className="w-4 h-4 text-emerald-300" />
+                <LogIn className="w-4 h-4 text-emerald-200" />
                 <span>Masuk Akun</span>
               </Link>
               <Link
                 href="/register"
                 onClick={() => setIsOpen(false)}
-                className="bg-emerald-950/60 text-emerald-200 text-center py-2.5 rounded-xl text-xs font-bold border border-emerald-700/60 flex items-center justify-center space-x-1.5"
+                className="bg-emerald-950/60 hover:bg-emerald-950 text-emerald-200 text-center py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5"
               >
                 <User className="w-4 h-4 text-emerald-300" />
                 <span>Daftar Akun</span>
@@ -198,15 +206,15 @@ export default function Navbar() {
                 href={link.href}
                 prefetch={true}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium transition ${
+                className={`flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? "bg-emerald-700 text-white font-semibold"
+                    ? "bg-emerald-800 text-white font-semibold"
                     : link.isHighlighted
-                    ? "bg-emerald-800/70 text-emerald-200 font-bold border border-emerald-400/30"
-                    : "text-emerald-100 hover:bg-emerald-800/50"
+                    ? "bg-emerald-700/60 text-white font-semibold hover:bg-emerald-700"
+                    : "text-emerald-100/90 hover:text-white hover:bg-emerald-800/40"
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4 text-emerald-300" />
                 <span>{link.name}</span>
               </Link>
             );

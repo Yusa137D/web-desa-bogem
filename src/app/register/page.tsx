@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { isValidGmail, isValidPhone, isValidPassword, isValidNIK, validatePassword } from "@/utils/validators";
@@ -55,14 +55,16 @@ function RegisterForm() {
   const [resending, setResending] = useState(false);
   const [resendStatus, setResendStatus] = useState("");
 
-  // If already logged in, redirect
-  if (user) {
-    if (user.role === "admin") {
-      router.push("/admin");
-    } else {
-      router.push(redirectPath || "/");
+  // If already logged in, redirect safely via useEffect
+  useEffect(() => {
+    if (user) {
+      if (user.role === "admin") {
+        router.replace("/admin");
+      } else {
+        router.replace(redirectPath || "/");
+      }
     }
-  }
+  }, [user, redirectPath, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +110,6 @@ function RegisterForm() {
       password,
       nama,
       phone,
-      role: "warga",
     });
 
     if (!res.success) {
@@ -165,30 +166,30 @@ function RegisterForm() {
         {/* Header Logo */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center space-x-3 group">
-            <div className="w-12 h-12 rounded-2xl bg-[#004329] text-white flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+            <div className="w-12 h-12 rounded-2xl bg-[#063321] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition">
               <Store className="w-6 h-6 text-emerald-300" />
             </div>
           </Link>
-          <h1 className="text-2xl font-extrabold text-slate-900">Pendaftaran Akun Warga</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Pendaftaran Akun Warga</h1>
           <p className="text-xs text-slate-500">
             Daftarkan NIK KTP Anda untuk mengajukan surat mandiri & layanan digital desa
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
           
           {/* SCREEN: EMAIL CONFIRMATION SENT */}
           {emailConfirmationRequired ? (
             <div className="space-y-6 text-center animate-in zoom-in-95 duration-200 py-4">
-              <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto border-2 border-emerald-200 shadow-inner">
-                <MailCheck className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto border border-emerald-200 shadow-sm">
+                <MailCheck className="w-8 h-8 text-emerald-700" />
               </div>
 
               <div className="space-y-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full inline-block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full inline-block border border-emerald-200">
                   Langkah Terakhir
                 </span>
-                <h2 className="text-xl font-extrabold text-slate-900">
+                <h2 className="text-xl font-bold text-slate-900">
                   Periksa Email Konfirmasi Anda
                 </h2>
                 <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
@@ -209,7 +210,7 @@ function RegisterForm() {
               <div className="space-y-3 pt-2">
                 <Link
                   href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`}
-                  className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md active:scale-95"
+                  className="w-full bg-[#063321] hover:bg-[#073d28] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-sm active:scale-95"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>Buka Halaman Masuk</span>
@@ -219,7 +220,7 @@ function RegisterForm() {
                   type="button"
                   onClick={handleResendEmail}
                   disabled={resending}
-                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold py-2.5 px-4 rounded-xl border border-slate-200 transition flex items-center justify-center space-x-1.5 text-xs active:scale-95 disabled:opacity-60"
+                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold py-2.5 px-4 rounded-xl border border-slate-200 transition flex items-center justify-center space-x-1.5 text-xs active:scale-95 disabled:opacity-60"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${resending ? "animate-spin text-emerald-700" : ""}`} />
                   <span>{resending ? "Mengirim Ulang..." : "Kirim Ulang Email Konfirmasi"}</span>
@@ -234,7 +235,7 @@ function RegisterForm() {
                 type="button"
                 onClick={handleGoogleSignup}
                 disabled={googleLoading}
-                className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold py-3 px-4 rounded-2xl border border-slate-300 transition flex items-center justify-center space-x-3 text-xs shadow-sm active:scale-95 disabled:opacity-60"
+                className="w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2.5 px-4 rounded-xl border border-slate-300/90 transition flex items-center justify-center space-x-3 text-xs shadow-sm active:scale-95 disabled:opacity-60"
               >
                 {googleLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
@@ -246,11 +247,11 @@ function RegisterForm() {
 
               {/* Divider */}
               <div className="relative flex items-center justify-center">
-                <div className="border-t border-slate-200 w-full"></div>
-                <span className="bg-white px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <div className="border-t border-slate-200/80 w-full"></div>
+                <span className="bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   atau Lengkapi Form NIK
                 </span>
-                <div className="border-t border-slate-200 w-full"></div>
+                <div className="border-t border-slate-200/80 w-full"></div>
               </div>
 
               {success && (
@@ -273,7 +274,7 @@ function RegisterForm() {
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
                     <span>NIK KTP (16 Digit)</span>
-                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                    <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80">
                       Wajib Sesuai KTP
                     </span>
                   </label>
@@ -286,7 +287,7 @@ function RegisterForm() {
                       value={nik}
                       onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, ""))}
                       placeholder="Contoh: 3520xxxxxxxxxxxx"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-bold tracking-wider"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-bold tracking-wider"
                     />
                   </div>
                 </div>
@@ -303,7 +304,7 @@ function RegisterForm() {
                       value={nama}
                       onChange={(e) => setNama(e.target.value)}
                       placeholder="Contoh: Budi Santoso"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                   </div>
                 </div>
@@ -320,7 +321,7 @@ function RegisterForm() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="budi@gmail.com"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                   </div>
                 </div>
@@ -337,7 +338,7 @@ function RegisterForm() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="Contoh: 081234567890"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                   </div>
                 </div>
@@ -354,7 +355,7 @@ function RegisterForm() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Min. 8 karakter, huruf besar, kecil, angka"
-                      className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                      className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                     <button
                       type="button"
@@ -401,7 +402,7 @@ function RegisterForm() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Ketik ulang kata sandi"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                   </div>
                 </div>
@@ -409,7 +410,7 @@ function RegisterForm() {
                 <button
                   type="submit"
                   disabled={loading || success || googleLoading}
-                  className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md mt-2 disabled:opacity-70 active:scale-95"
+                  className="w-full bg-[#063321] hover:bg-[#073d28] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-sm mt-2 disabled:opacity-70 active:scale-95"
                 >
                   {loading ? (
                     <>
@@ -428,7 +429,7 @@ function RegisterForm() {
               <div className="text-center pt-2 border-t border-slate-100">
                 <p className="text-xs text-slate-500">
                   Sudah punya akun warga?{" "}
-                  <Link href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`} className="font-bold text-[#004329] hover:underline">
+                  <Link href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`} className="font-bold text-emerald-800 hover:underline">
                     Masuk di Sini
                   </Link>
                 </p>

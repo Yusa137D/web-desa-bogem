@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { isValidGmail } from "@/utils/validators";
@@ -43,14 +43,16 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // If already logged in, redirect
-  if (user) {
-    if (user.role === "admin") {
-      router.push("/admin");
-    } else {
-      router.push(redirectPath || "/");
+  // If already logged in, redirect safely via useEffect
+  useEffect(() => {
+    if (user) {
+      if (user.role === "admin") {
+        router.replace("/admin");
+      } else {
+        router.replace(redirectPath || "/");
+      }
     }
-  }
+  }, [user, redirectPath, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,24 +101,24 @@ function LoginForm() {
         {/* Header Logo */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center space-x-3 group">
-            <div className="w-12 h-12 rounded-2xl bg-[#004329] text-white flex items-center justify-center shadow-lg group-hover:scale-105 transition">
+            <div className="w-12 h-12 rounded-2xl bg-[#063321] text-white flex items-center justify-center shadow-md group-hover:scale-105 transition">
               <Store className="w-6 h-6 text-emerald-300" />
             </div>
           </Link>
-          <h1 className="text-2xl font-extrabold text-slate-900">Masuk Akun Warga</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Masuk Akun Warga</h1>
           <p className="text-xs text-slate-500">
             Masuk dengan Akun Google atau NIK KTP (16 Digit) & Email
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
           
           {/* 1-Click Google Sign In */}
           <button
             type="button"
             onClick={handleGoogleLogin}
             disabled={googleLoading}
-            className="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold py-3 px-4 rounded-2xl border border-slate-300 transition flex items-center justify-center space-x-3 text-xs shadow-sm active:scale-95 disabled:opacity-60"
+            className="w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2.5 px-4 rounded-xl border border-slate-300/90 transition flex items-center justify-center space-x-3 text-xs shadow-sm active:scale-95 disabled:opacity-60"
           >
             {googleLoading ? (
               <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
@@ -128,11 +130,11 @@ function LoginForm() {
 
           {/* Divider */}
           <div className="relative flex items-center justify-center">
-            <div className="border-t border-slate-200 w-full"></div>
-            <span className="bg-white px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <div className="border-t border-slate-200/80 w-full"></div>
+            <span className="bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               atau via NIK / Email
             </span>
-            <div className="border-t border-slate-200 w-full"></div>
+            <div className="border-t border-slate-200/80 w-full"></div>
           </div>
 
           {error && (
@@ -147,7 +149,7 @@ function LoginForm() {
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
                 <span>NIK KTP atau Alamat Email</span>
-                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80">
                   16 Digit / Email
                 </span>
               </label>
@@ -159,7 +161,7 @@ function LoginForm() {
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="Contoh: 3520xxxxxxxxxxxx atau budi@gmail.com"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                 />
               </div>
             </div>
@@ -171,7 +173,7 @@ function LoginForm() {
                 </label>
                 <Link
                   href="/forgot-password"
-                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline"
+                  className="text-[11px] font-semibold text-emerald-800 hover:text-emerald-950 hover:underline"
                 >
                   Lupa kata sandi?
                 </Link>
@@ -184,7 +186,7 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs text-slate-800 font-medium"
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                 />
                 <button
                   type="button"
@@ -199,7 +201,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading || googleLoading}
-              className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3.5 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md mt-2 disabled:opacity-70 active:scale-95"
+              className="w-full bg-[#063321] hover:bg-[#073d28] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-sm mt-2 disabled:opacity-70 active:scale-95"
             >
               {loading ? (
                 <>
@@ -218,7 +220,7 @@ function LoginForm() {
           <div className="text-center pt-2 border-t border-slate-100">
             <p className="text-xs text-slate-500">
               Belum punya akun warga?{" "}
-              <Link href={`/register${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`} className="font-bold text-[#004329] hover:underline">
+              <Link href={`/register${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`} className="font-bold text-emerald-800 hover:underline">
                 Daftar Akun Baru
               </Link>
             </p>

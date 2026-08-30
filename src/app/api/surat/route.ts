@@ -6,15 +6,26 @@ import {
   updateStatusDanFileSurat,
   deletePermohonanSurat,
 } from "@/services/suratService";
+import { verifyAdminSession } from "@/lib/auth/serverAuth";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
 
+    // Public options list
     if (type === "opsi") {
       const opsi = await fetchOpsiSuratList();
       return NextResponse.json({ success: true, data: opsi });
+    }
+
+    // Fetching all citizen applications requires Admin session
+    const authCheck = await verifyAdminSession();
+    if (!authCheck.isAdmin) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: Data permohonan surat hanya dapat diakses oleh admin desa." },
+        { status: 403 }
+      );
     }
 
     const suratList = await fetchSuratList();
@@ -43,6 +54,11 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const authCheck = await verifyAdminSession();
+    if (!authCheck.isAdmin) {
+      return NextResponse.json({ success: false, error: authCheck.error }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {
@@ -70,6 +86,11 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const authCheck = await verifyAdminSession();
+    if (!authCheck.isAdmin) {
+      return NextResponse.json({ success: false, error: authCheck.error }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {

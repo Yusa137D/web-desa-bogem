@@ -10,6 +10,7 @@ import {
 import { BeritaItem, KATEGORI_BERITA_PRESETS } from "@/types/berita";
 import { formatDateIndonesian } from "@/utils/formatters";
 import { compressImage } from "@/utils/imageCompressor";
+import { uploadVillageImage } from "@/lib/storage";
 import {
   ArrowLeft,
   Send,
@@ -83,18 +84,26 @@ export default function KelolaBeritaAdmin() {
     }
 
     try {
-      const compressed = await compressImage(file, 1200, 800, 0.82);
-      setGambar(compressed);
+      // 1. Try uploading to Supabase Storage Bucket ('public-images')
+      const publicUrl = await uploadVillageImage(file, "berita");
+      setGambar(publicUrl);
       setStatus("idle");
     } catch {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setGambar(event.target.result as string);
-          setStatus("idle");
-        }
-      };
-      reader.readAsDataURL(file);
+      // 2. Fallback to client-side compressed webp if storage bucket is offline
+      try {
+        const compressed = await compressImage(file, 1200, 800, 0.82);
+        setGambar(compressed);
+        setStatus("idle");
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setGambar(event.target.result as string);
+            setStatus("idle");
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -195,7 +204,7 @@ export default function KelolaBeritaAdmin() {
 
     setDeletingId(item.id);
     try {
-      await deleteBerita(item.id, item.judul);
+      await deleteBerita(item.id);
       setDeleteSuccessMsg(`Berita "${item.judul}" berhasil dihapus.`);
       setTimeout(() => setDeleteSuccessMsg(""), 4000);
       if (editingId === item.id) resetForm();
@@ -208,27 +217,27 @@ export default function KelolaBeritaAdmin() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] pb-24 pt-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <main className="min-h-screen bg-[#F8FAFC] pb-24 pt-6 sm:pt-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
         
         {/* Navigation & Header */}
         <div className="space-y-4">
           <Link
             href="/admin"
-            className="inline-flex items-center space-x-2 text-xs font-bold text-[#004329] hover:underline"
+            className="inline-flex items-center space-x-2 text-xs font-semibold text-emerald-800 hover:text-emerald-950 hover:underline"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Kembali ke Dashboard Admin</span>
           </Link>
-          <div className="bg-gradient-to-br from-[#00321F] via-[#004A2F] to-[#006643] rounded-3xl p-6 sm:p-10 text-white shadow-xl">
-            <div className="inline-flex items-center space-x-2 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-2">
-              <Newspaper className="w-3.5 h-3.5" />
+          <div className="bg-[#073623] rounded-3xl p-6 sm:p-8 lg:p-10 text-white shadow-sm relative overflow-hidden">
+            <div className="inline-flex items-center space-x-2 bg-emerald-800/80 border border-emerald-500/40 text-emerald-100 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+              <Newspaper className="w-3.5 h-3.5 text-emerald-300" />
               <span>Publikasi Warta Desa</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               {editingId ? "Edit Warta / Berita Desa" : "Kelola & Terbitkan Berita Baru"}
             </h1>
-            <p className="text-emerald-100/90 text-xs sm:text-sm mt-1 max-w-xl">
+            <p className="text-emerald-100/85 text-xs sm:text-sm mt-1 max-w-xl">
               Publikasikan pengumuman resmi, agenda kegiatan kemasyarakatan, dan warta terkini warga Desa Bogem.
             </p>
           </div>

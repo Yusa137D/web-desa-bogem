@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchInfografisData, updateInfografisData } from "@/services/infografisService";
+import { verifyAdminSession } from "@/lib/auth/serverAuth";
 
 export async function GET() {
   try {
@@ -13,6 +14,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const authCheck = await verifyAdminSession();
+    if (!authCheck.isAdmin) {
+      return NextResponse.json({ success: false, error: authCheck.error }, { status: 403 });
+    }
+
     const body = await request.json();
     const result = await updateInfografisData(body);
 
