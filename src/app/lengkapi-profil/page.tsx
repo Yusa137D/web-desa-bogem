@@ -146,7 +146,7 @@ function LengkapiProfilForm() {
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 rounded-xl bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center font-bold text-xs shadow-sm overflow-hidden">
                 {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt="Avatar" className="w-full h-full rounded-xl object-cover" />
+                  <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <span>{user?.name?.charAt(0) || "G"}</span>
                 )}

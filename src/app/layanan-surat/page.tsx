@@ -358,7 +358,7 @@ export default function LayananSuratPage() {
                     <div>
                       <span className="font-extrabold block text-slate-900">{user.name}</span>
                       <span className="text-emerald-800 text-[11px]">
-                        NIK KTP: <strong>{user.nik || "Terverifikasi"}</strong> • {user.email}
+                        NIK KTP: <strong>{user.nik || "Belum diisi"}</strong> • {user.email}
                       </span>
                     </div>
                   </div>
