@@ -119,6 +119,7 @@ function RegisterForm() {
       password,
       nama,
       phone,
+      role: "warga",
     });
 
     if (!res.success) {

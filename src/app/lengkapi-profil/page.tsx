@@ -9,7 +9,6 @@ import {
   CreditCard,
   User,
   Phone,
-  MapPin,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -36,14 +35,12 @@ function LengkapiProfilForm() {
   const [nik, setNik] = useState("");
   const [nama, setNama] = useState("");
   const [phone, setPhone] = useState("");
-  const [alamat, setAlamat] = useState("");
-  const [dusun, setDusun] = useState("Dusun I");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  // 1. Initial Session Check: Fetch directly from Supabase session to prevent Context delay race condition
+  // 1. Initial Session Check: Fetch directly from Supabase session
   useEffect(() => {
     let isMounted = true;
 
@@ -58,7 +55,6 @@ function LengkapiProfilForm() {
         const activeUser = sessionData.session?.user;
 
         if (!activeUser) {
-          // If no active session after context finishes loading, redirect to login
           if (!authLoading && isMounted) {
             router.replace(`/login?redirect=${encodeURIComponent(redirectPath)}`);
           }
@@ -98,15 +94,6 @@ function LengkapiProfilForm() {
 
           if (profile?.nik) setNik(profile.nik);
           if (profile?.no_hp) setPhone(profile.no_hp);
-          if (profile?.alamat) {
-            const dusunMatch = profile.alamat.match(/^(Dusun (?:I|II|III|IV)),?\s*(.*)$/i);
-            if (dusunMatch) {
-              setDusun(dusunMatch[1]);
-              setAlamat(dusunMatch[2]);
-            } else {
-              setAlamat(profile.alamat);
-            }
-          }
 
           // If the profile is ALREADY completely filled with valid 16-digit NIK and phone, redirect forward
           const isComplete = Boolean(
@@ -182,13 +169,10 @@ function LengkapiProfilForm() {
 
     setSaving(true);
 
-    const fullAlamat = dusun ? `${dusun}, ${alamat.trim()}`.trim() : alamat.trim();
-
     const res = await updateProfile({
       nik: cleanNik,
       nama: nama.trim(),
       phone: phone.trim(),
-      alamat: fullAlamat,
     });
 
     setSaving(false);
@@ -339,39 +323,6 @@ function LengkapiProfilForm() {
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Contoh: 081234567890"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium font-mono"
-                />
-              </div>
-            </div>
-
-            {/* Dusun / Alamat */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase">
-                Alamat / Wilayah Dusun di Desa Bogem
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {["Dusun I", "Dusun II", "Dusun III", "Dusun IV"].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDusun(d)}
-                    className={`py-2 px-2 rounded-xl text-xs font-bold border transition ${
-                      dusun === d
-                        ? "bg-[#004329] text-white border-[#004329] shadow-sm"
-                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-              <div className="relative">
-                <MapPin className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={alamat}
-                  onChange={(e) => setAlamat(e.target.value)}
-                  placeholder="RT / RW / Nama Jalan (Contoh: RT 02 / RW 01)"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                 />
               </div>
             </div>

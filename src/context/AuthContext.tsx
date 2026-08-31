@@ -13,7 +13,6 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   phone?: string;
-  alamat?: string;
   avatar_url?: string;
   isProfileComplete?: boolean;
 }
@@ -29,15 +28,16 @@ interface AuthContextType {
     password: string;
     nama: string;
     phone: string;
+    role: UserRole;
+    adminSecret?: string;
   }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   updateProfile: (data: {
     nik: string;
     nama: string;
     phone: string;
-    alamat?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  demoLogin?: (role: UserRole) => void;
+  demoLogin: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -48,6 +48,7 @@ const AuthContext = createContext<AuthContextType>({
   registerWithSupabase: async () => ({ success: false }),
   updateProfile: async () => ({ success: false }),
   logout: async () => {},
+  demoLogin: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -66,7 +67,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "Warga Desa";
     let nik: string = meta.nik || "";
     let phone: string = meta.phone || meta.no_hp || "";
-    let alamat: string = meta.alamat || "";
     let avatar_url: string = meta.avatar_url || meta.picture || "";
 
     try {
@@ -84,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (profile.nama) name = profile.nama;
           if (profile.nik) nik = profile.nik;
           if (profile.no_hp) phone = profile.no_hp;
-          if (profile.alamat) alamat = profile.alamat;
         }
       }
     } catch (err) {
@@ -102,7 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name,
       role,
       phone,
-      alamat,
       avatar_url,
       isProfileComplete,
     };
@@ -384,18 +382,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: `Gagal memperbarui database: ${profileErr.message}` };
       }
 
-      // If database has 'alamat' column, also attempt saving it
-      if (data.alamat) {
-        try {
-          await supabase
-            .from("profiles")
-            .update({ alamat: data.alamat })
-            .eq("id", currentUser.id);
-        } catch {
-          // Ignored if column doesn't exist
-        }
-      }
-
       // 3. Update auth user metadata
       await supabase.auth.updateUser({
         data: {
@@ -404,7 +390,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           nama: cleanNama,
           phone: cleanPhone,
           no_hp: cleanPhone,
-          alamat: data.alamat || "",
           role: "warga",
         },
       });
@@ -417,7 +402,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               nik: cleanNik,
               name: cleanNama,
               phone: cleanPhone,
-              alamat: data.alamat || "",
               isProfileComplete: true,
             }
           : {
@@ -426,7 +410,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               nik: cleanNik,
               name: cleanNama,
               phone: cleanPhone,
-              alamat: data.alamat || "",
               role: "warga",
               isProfileComplete: true,
             }
