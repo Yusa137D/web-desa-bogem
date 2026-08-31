@@ -101,10 +101,10 @@ export default function LayananSuratPage() {
 
   // Load My Letters for Logged in Citizen
   const loadMyLetters = async () => {
-    if (!user || !user.id) return;
+    if (!user) return;
     setLoadingMyLetters(true);
     try {
-      const userLetters = await fetchUserSuratList(user.id);
+      const userLetters = await fetchUserSuratList(user.id, user.nik);
       setMyLetters(userLetters);
     } catch (err) {
       console.error("loadMyLetters error:", err);

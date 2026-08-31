@@ -103,17 +103,29 @@ export async function fetchSuratList(): Promise<PermohonanSurat[]> {
 }
 
 /**
- * Fetch ONLY surat applications belonging to a specific citizen user
+ * Fetch ONLY surat applications belonging to a specific citizen user (by User ID or NIK)
  */
-export async function fetchUserSuratList(userId: string): Promise<PermohonanSurat[]> {
+export async function fetchUserSuratList(userId?: string, nik?: string): Promise<PermohonanSurat[]> {
   try {
-    if (!supabase || !userId) return [];
+    if (!supabase) return [];
+    if (!userId && !nik) return [];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("permohonan_surat")
       .select("*")
-      .eq("user_id", userId)
       .order("created_at", { ascending: false });
+
+    const cleanNik = nik?.trim();
+
+    if (userId && cleanNik) {
+      query = query.or(`user_id.eq.${userId},nik.eq.${cleanNik}`);
+    } else if (userId) {
+      query = query.eq("user_id", userId);
+    } else if (cleanNik) {
+      query = query.eq("nik", cleanNik);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("fetchUserSuratList error:", error.message);
