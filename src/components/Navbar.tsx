@@ -13,6 +13,7 @@ import {
   FileText,
   LogIn,
   LogOut,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -86,24 +87,40 @@ export default function Navbar() {
             })}
 
             {/* User Profile Pill on Desktop */}
-            <div className="pl-3 border-l border-emerald-800/60 ml-2">
+            <div className="pl-3 border-l border-emerald-800/60 ml-2 flex items-center space-x-2">
               {user ? (
-                <div className="flex items-center space-x-2 bg-emerald-950/70 px-3 py-1.5 rounded-xl border border-emerald-800/70 text-xs">
-                  <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px]">
-                    {user.name.charAt(0)}
+                <>
+                  {!user.isProfileComplete && (
+                    <Link
+                      href="/lengkapi-profil"
+                      className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40 px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center space-x-1 transition animate-pulse"
+                      title="Profil belum lengkap, klik untuk mengisi NIK KTP"
+                    >
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Lengkapi NIK</span>
+                    </Link>
+                  )}
+                  <div className="flex items-center space-x-2 bg-emerald-950/70 px-3 py-1.5 rounded-xl border border-emerald-800/70 text-xs">
+                    <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-[10px] overflow-hidden">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        user.name.charAt(0)
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white max-w-[100px] truncate leading-tight">{user.name}</span>
+                      <span className="text-[9px] text-emerald-300 capitalize">{user.role}</span>
+                    </div>
+                    <button
+                      onClick={() => logout()}
+                      className="text-emerald-400 hover:text-rose-300 p-1 transition ml-1"
+                      title="Keluar"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-white max-w-[100px] truncate leading-tight">{user.name}</span>
-                    <span className="text-[9px] text-emerald-300 capitalize">{user.role}</span>
-                  </div>
-                  <button
-                    onClick={() => logout()}
-                    className="text-emerald-400 hover:text-rose-300 p-1 transition"
-                    title="Keluar"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                </>
               ) : (
                 <Link
                   href="/login"
@@ -119,7 +136,7 @@ export default function Navbar() {
           {/* Mobile & Tablet 2-Line Animated Hamburger Button */}
           <div className="lg:hidden flex items-center space-x-2">
             {user && (
-              <div className="flex items-center space-x-1.5 bg-emerald-950/60 px-2.5 py-1 rounded-xl text-xs">
+              <div className="flex items-center space-x-1.5 bg-emerald-950/60 px-2.5 py-1 rounded-xl text-xs border border-emerald-800/60">
                 <span className="font-bold text-emerald-200 text-[11px] max-w-[80px] truncate">{user.name}</span>
               </div>
             )}
@@ -152,28 +169,45 @@ export default function Navbar() {
           
           {/* Mobile User Profile Header */}
           {user ? (
-            <div className="bg-emerald-950/50 p-3.5 rounded-2xl flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-3 text-xs">
-                <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold text-sm">
-                  {user.name.charAt(0)}
+            <div className="bg-emerald-950/50 p-3.5 rounded-2xl border border-emerald-800/60 mb-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 text-xs">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold text-sm overflow-hidden">
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      user.name.charAt(0)
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-bold text-white block">{user.name}</span>
+                    <span className="text-[11px] text-emerald-300/90 font-mono">
+                      {user.nik ? `NIK: ${user.nik}` : user.email}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-bold text-white block">{user.name}</span>
-                  <span className="text-[11px] text-emerald-300/90">
-                    {user.nik ? `NIK: ${user.nik}` : user.email}
-                  </span>
-                </div>
+                <button
+                  onClick={() => {
+                    logout();
+                    setIsOpen(false);
+                  }}
+                  className="bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-800/60 transition flex items-center space-x-1"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Keluar</span>
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  logout();
-                  setIsOpen(false);
-                }}
-                className="bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center space-x-1"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Keluar</span>
-              </button>
+
+              {!user.isProfileComplete && (
+                <Link
+                  href="/lengkapi-profil"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40 text-xs font-bold py-2 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Profil Belum Lengkap — Lengkapi NIK KTP</span>
+                </Link>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2 mb-3">

@@ -15,10 +15,17 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   nama TEXT NOT NULL,
   no_hp TEXT,
   email TEXT,
+  alamat TEXT,
+  avatar_url TEXT,
   role TEXT DEFAULT 'warga', -- 'admin' | 'warga'
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nik TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS no_hp TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS alamat TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 -- 2. TABEL 'infografis' (Demografi Kependudukan, Pekerjaan, Pendidikan, APBDes & Status IDM)
 CREATE TABLE IF NOT EXISTS public.infografis (
@@ -216,19 +223,26 @@ ON CONFLICT (id) DO NOTHING;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, nama, nik, no_hp, role)
+  INSERT INTO public.profiles (id, email, nama, nik, no_hp, avatar_url, role)
   VALUES (
     new.id,
     new.email,
-    COALESCE(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'nama', split_part(new.email, '@', 1)),
+    COALESCE(
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      new.raw_user_meta_data->>'nama',
+      split_part(new.email, '@', 1)
+    ),
     new.raw_user_meta_data->>'nik',
-    new.raw_user_meta_data->>'phone',
+    COALESCE(new.raw_user_meta_data->>'phone', new.raw_user_meta_data->>'no_hp'),
+    COALESCE(new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'picture'),
     COALESCE(new.raw_user_meta_data->>'role', 'warga')
   )
   ON CONFLICT (id) DO UPDATE SET
-    nama = EXCLUDED.nama,
+    nama = COALESCE(EXCLUDED.nama, profiles.nama),
     nik = COALESCE(EXCLUDED.nik, profiles.nik),
     no_hp = COALESCE(EXCLUDED.no_hp, profiles.no_hp),
+    avatar_url = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
     updated_at = NOW();
   RETURN NEW;
 END;
@@ -345,14 +359,24 @@ CREATE POLICY "Admin delete surat" ON public.permohonan_surat
 FOR DELETE USING (public.is_admin());
 
 -- 6. Kebijakan Tabel Profiles
--- User hanya bisa melihat profilnya sendiri atau admin bisa melihat semua profil
-CREATE POLICY "User view own profile or admin" ON public.profiles
-FOR SELECT USING (
-  auth.uid() = id OR public.is_admin()
-);
+-- Reset kebijakan lama
+DROP POLICY IF EXISTS "Allow public read profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Allow write profiles" ON public.profiles;
+DROP POLICY IF EXISTS "User view own profile or admin" ON public.profiles;
+DROP POLICY IF EXISTS "User update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "User insert own profile" ON public.profiles;
 
+-- Publik diizinkan membaca data profil agar NIK login lookup dan validasi unik NIK dapat berjalan lancar
+CREATE POLICY "Allow public read profiles" ON public.profiles
+FOR SELECT USING (true);
+
+-- User terotentikasi dapat membuat (insert) profil miliknya sendiri jika belum ada
+CREATE POLICY "User insert own profile" ON public.profiles
+FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- User dapat mengupdate profil miliknya sendiri, atau Admin dapat mengupdate seluruh profil
 CREATE POLICY "User update own profile" ON public.profiles
-FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+FOR UPDATE USING (auth.uid() = id OR public.is_admin()) WITH CHECK (auth.uid() = id OR public.is_admin());
 
 -- ==============================================================================
 -- KONFIGURASI STORAGE BUCKET 'public-images'

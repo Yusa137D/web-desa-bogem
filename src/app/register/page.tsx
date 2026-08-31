@@ -57,6 +57,13 @@ function RegisterForm() {
 
   // If already logged in, redirect safely via useEffect
   useEffect(() => {
+    const urlError = searchParams.get("error");
+    if (urlError) {
+      setError(decodeURIComponent(urlError));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     if (user) {
       if (user.role === "admin") {
         router.replace("/admin");

@@ -367,6 +367,24 @@ export default function LayananSuratPage() {
                   </span>
                 </div>
 
+                {/* Warning if NIK not filled yet */}
+                {!user.nik && (
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-in fade-in">
+                    <div className="flex items-center space-x-2.5 text-amber-900">
+                      <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                      <span>
+                        <strong>Profil belum lengkap:</strong> NIK KTP Anda belum terisi. Lengkapi profil Anda agar data surat tersimpan resmi.
+                      </span>
+                    </div>
+                    <Link
+                      href="/lengkapi-profil?redirect=/layanan-surat"
+                      className="bg-amber-700 hover:bg-amber-800 text-white font-bold px-3 py-1.5 rounded-xl transition flex-shrink-0 self-end sm:self-auto"
+                    >
+                      Lengkapi NIK KTP →
+                    </Link>
+                  </div>
+                )}
+
                 {/* Modal Sukses Pengajuan */}
                 {successTicket && (
                   <div className="bg-emerald-50 border-2 border-emerald-400 rounded-3xl p-6 sm:p-8 space-y-4 shadow-lg animate-in zoom-in-95 duration-200">
