@@ -67,6 +67,8 @@ function RegisterForm() {
     if (user) {
       if (user.role === "admin") {
         router.replace("/admin");
+      } else if (user.isProfileComplete === false) {
+        router.replace(`/lengkapi-profil${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`);
       } else {
         router.replace(redirectPath || "/");
       }

@@ -15,99 +15,132 @@ function AuthCallbackContent() {
     if (processedRef.current) return;
     processedRef.current = true;
 
-    async function handleAuth() {
-      // 1. Check if OAuth provider returned an error in the query parameters
-      const urlError = searchParams.get("error");
-      const errorDescription = searchParams.get("error_description");
-      if (urlError || errorDescription) {
-        console.error("OAuth error returned from provider:", urlError, errorDescription);
-        const errorMsg = errorDescription || urlError || "Gagal masuk dengan akun Google.";
-        router.replace(`/login?error=${encodeURIComponent(errorMsg)}`);
+    let timeoutId: NodeJS.Timeout | null = null;
+    let authListenerSubscription: { unsubscribe: () => void } | null = null;
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      if (authListenerSubscription) {
+        authListenerSubscription.unsubscribe();
+        authListenerSubscription = null;
+      }
+    };
+
+    const handleRedirectForUser = async (user: any) => {
+      cleanup();
+      if (!user) {
+        router.replace(`/login?error=${encodeURIComponent("Sesi login tidak valid. Silakan coba masuk kembali.")}`);
         return;
       }
 
-      // 2. Check if an authorization code was returned (PKCE Flow)
-      const code = searchParams.get("code");
-      if (code && supabase) {
-        try {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) {
-            console.error("exchangeCodeForSession error:", exchangeError);
-            router.replace(`/login?error=${encodeURIComponent("Gagal verifikasi sesi Google: " + exchangeError.message)}`);
-            return;
-          }
-        } catch (exchangeEx) {
-          console.warn("exchangeCodeForSession exception:", exchangeEx);
-        }
-      }
+      try {
+        // Query database to check if this citizen profile already has a valid 16-digit NIK and phone
+        let hasNik = false;
+        let hasPhone = false;
 
-      // 3. Inspect session and user profile completeness
-      const checkSessionAndRedirect = async (user: any) => {
-        if (!user) return false;
-
-        try {
-          // Check public.profiles table for registered 16-digit NIK and valid phone number
+        if (supabase) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("nik, phone, no_hp")
+            .select("nik, phone, no_hp, role")
             .eq("id", user.id)
             .maybeSingle();
 
-          const userMeta = user.user_metadata || {};
-          const nik = profile?.nik || userMeta.nik || "";
-          const phone = profile?.no_hp || profile?.phone || userMeta.phone || userMeta.no_hp || "";
-
-          const hasValidNik = Boolean(nik && /^[0-9]{16}$/.test(nik.trim()));
-          const hasValidPhone = Boolean(phone && phone.trim().length >= 9);
-
-          if (!hasValidNik || !hasValidPhone) {
-            router.replace(`/lengkapi-profil?redirect=${encodeURIComponent(redirectPath)}`);
-          } else {
-            router.replace(redirectPath);
+          if (profile?.role === "admin") {
+            router.replace("/admin");
+            return;
           }
-          return true;
-        } catch (profileErr) {
-          console.warn("Could not check profile completeness:", profileErr);
-          router.replace(redirectPath);
-          return true;
-        }
-      };
 
+          const currentNik = profile?.nik || user.user_metadata?.nik || "";
+          const currentPhone = profile?.no_hp || profile?.phone || user.user_metadata?.phone || user.user_metadata?.no_hp || "";
+
+          hasNik = Boolean(currentNik && /^[0-9]{16}$/.test(currentNik.trim()));
+          hasPhone = Boolean(currentPhone && currentPhone.trim().length >= 9);
+        }
+
+        // If profile is missing NIK or phone, send them to complete profile onboarding
+        if (!hasNik || !hasPhone) {
+          router.replace(`/lengkapi-profil?redirect=${encodeURIComponent(redirectPath)}`);
+        } else {
+          router.replace(redirectPath);
+        }
+      } catch (err) {
+        console.warn("Could not check user profile in callback:", err);
+        router.replace(`/lengkapi-profil?redirect=${encodeURIComponent(redirectPath)}`);
+      }
+    };
+
+    async function processAuthCallback() {
+      // 1. Check if OAuth provider returned an error in URL
+      const urlError = searchParams.get("error");
+      const errorDescription = searchParams.get("error_description");
+      if (urlError || errorDescription) {
+        cleanup();
+        const msg = errorDescription || urlError || "Gagal masuk dengan akun Google.";
+        router.replace(`/login?error=${encodeURIComponent(msg)}`);
+        return;
+      }
+
+      if (!supabase) {
+        cleanup();
+        router.replace(`/login?error=${encodeURIComponent("Layanan autentikasi database belum siap.")}`);
+        return;
+      }
+
+      // 2. PKCE Authorization Code Exchange
+      const code = searchParams.get("code");
+      if (code) {
+        try {
+          const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            console.error("exchangeCodeForSession error:", exchangeError);
+            cleanup();
+            router.replace(`/login?error=${encodeURIComponent("Gagal verifikasi sesi Google: " + exchangeError.message)}`);
+            return;
+          }
+
+          if (exchangeData?.user) {
+            await handleRedirectForUser(exchangeData.user);
+            return;
+          }
+        } catch (ex) {
+          console.warn("Code exchange exception:", ex);
+        }
+      }
+
+      // 3. Check existing session if already established
       try {
-        if (!supabase) {
-          router.replace(redirectPath);
-          return;
-        }
-
         const { data: sessionData } = await supabase.auth.getSession();
         if (sessionData.session?.user) {
-          await checkSessionAndRedirect(sessionData.session.user);
+          await handleRedirectForUser(sessionData.session.user);
           return;
         }
-
-        // Listen for auth state change (e.g. hash token parsing)
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (session?.user) {
-            await checkSessionAndRedirect(session.user);
-          }
-        });
-
-        // Safe timeout fallback
-        const timeout = setTimeout(() => {
-          router.replace(redirectPath);
-        }, 3000);
-
-        return () => {
-          clearTimeout(timeout);
-          authListener.subscription.unsubscribe();
-        };
       } catch (err) {
-        console.error("Auth callback exception:", err);
-        router.replace(redirectPath);
+        console.warn("getSession error in callback:", err);
       }
+
+      // 4. Listen for auth state change (e.g. implicit hash token parsing)
+      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          await handleRedirectForUser(session.user);
+        }
+      });
+      authListenerSubscription = authListener.subscription;
+
+      // 5. Safe timeout fallback: if auth cannot resolve in 4 seconds, send back to login with friendly error
+      timeoutId = setTimeout(() => {
+        cleanup();
+        router.replace(`/login?error=${encodeURIComponent("Waktu verifikasi sesi habis. Silakan coba masuk kembali.")}`);
+      }, 4000);
     }
 
-    handleAuth();
+    processAuthCallback();
+
+    return () => {
+      cleanup();
+    };
   }, [router, redirectPath, searchParams]);
 
   return (

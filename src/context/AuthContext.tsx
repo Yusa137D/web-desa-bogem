@@ -92,9 +92,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn("Could not fetch user profile from profiles table:", err);
     }
 
-    const isProfileComplete = Boolean(
-      nik && /^[0-9]{16}$/.test(nik.trim()) && phone && phone.trim().length >= 9
-    );
+    const isProfileComplete =
+      role === "admin" ||
+      Boolean(nik && /^[0-9]{16}$/.test(nik.trim()) && phone && phone.trim().length >= 9);
 
     return {
       id: supabaseUser.id,
