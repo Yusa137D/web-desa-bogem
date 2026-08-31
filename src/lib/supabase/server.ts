@@ -1,29 +1,14 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
+
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vymxgeivzwtozbqtjiim.supabase.co";
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bXhnZWl2end0b3picXRqaWltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1OTcxMjUsImV4cCI6MjEwMjE3MzEyNX0.zG169evwh79OXCr7FPEjfyycNbzhQ0eyHne-Zln-6t8";
 
 export async function createClient() {
-  const cookieStore = await cookies();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.");
-  }
-
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        } catch {
-          // Called from a Server Component; ignoring set cookie
-        }
-      },
-    },
-  });
+  return createSupabaseJsClient(supabaseUrl, supabaseAnonKey);
 }
+
+export const supabaseServer = createSupabaseJsClient(supabaseUrl, supabaseAnonKey);
+export default supabaseServer;

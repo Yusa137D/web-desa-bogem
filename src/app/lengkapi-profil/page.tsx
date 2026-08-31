@@ -88,7 +88,7 @@ function LengkapiProfilForm() {
         // Fetch existing database profile if any
         const { data: profile } = await supabase
           .from("profiles")
-          .select("nik, nama, no_hp, alamat, role")
+          .select("*")
           .eq("id", activeUser.id)
           .maybeSingle();
 

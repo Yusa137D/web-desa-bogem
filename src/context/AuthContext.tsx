@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (supabase) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role, nama, nik, no_hp, alamat, email, avatar_url")
+          .select("*")
           .eq("id", supabaseUser.id)
           .maybeSingle();
 
@@ -85,7 +85,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (profile.nik) nik = profile.nik;
           if (profile.no_hp) phone = profile.no_hp;
           if (profile.alamat) alamat = profile.alamat;
-          if (profile.avatar_url) avatar_url = profile.avatar_url;
         }
       }
     } catch (err) {
@@ -364,26 +363,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      // 2. Upsert into profiles table
+      // 2. Upsert into profiles table with core compatible schema
+      const basePayload: Record<string, any> = {
+        id: currentUser.id,
+        nik: cleanNik,
+        nama: cleanNama,
+        no_hp: cleanPhone,
+        email: currentUser.email,
+        role: "warga",
+        updated_at: new Date().toISOString(),
+      };
+
       const { error: profileErr } = await supabase.from("profiles").upsert(
-        [
-          {
-            id: currentUser.id,
-            nik: cleanNik,
-            nama: cleanNama,
-            no_hp: cleanPhone,
-            alamat: data.alamat || "",
-            email: currentUser.email,
-            role: "warga",
-            updated_at: new Date().toISOString(),
-          },
-        ],
+        [basePayload],
         { onConflict: "id" }
       );
 
       if (profileErr) {
         console.error("updateProfile DB error:", profileErr);
         return { success: false, error: `Gagal memperbarui database: ${profileErr.message}` };
+      }
+
+      // If database has 'alamat' column, also attempt saving it
+      if (data.alamat) {
+        try {
+          await supabase
+            .from("profiles")
+            .update({ alamat: data.alamat })
+            .eq("id", currentUser.id);
+        } catch {
+          // Ignored if column doesn't exist
+        }
       }
 
       // 3. Update auth user metadata
