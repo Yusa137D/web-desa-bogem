@@ -96,12 +96,23 @@ export default function Navbar() {
                     {user.name.charAt(0)}
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-bold text-white max-w-[100px] truncate leading-tight">{user.name}</span>
-                    <span className="text-[9px] text-emerald-300 capitalize">{user.role}</span>
+                    <span className="font-bold text-white max-w-[110px] truncate leading-tight">{user.name}</span>
+                    <span className="text-[9px] text-emerald-300 font-semibold">
+                      {user.role === "admin" ? "Pengelola Desa" : "Warga Desa"}
+                    </span>
                   </div>
+                  {!user.isProfileComplete && (
+                    <Link
+                      href="/lengkapi-profil"
+                      className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-400/30 px-1.5 py-0.5 rounded-md font-bold hover:bg-amber-500/30 transition"
+                      title="Lengkapi NIK KTP Anda"
+                    >
+                      Lengkapi NIK
+                    </Link>
+                  )}
                   <button
                     onClick={() => logout()}
-                    className="text-emerald-400 hover:text-rose-300 p-1 transition"
+                    className="text-emerald-400 hover:text-rose-300 p-1 transition ml-1"
                     title="Keluar"
                   >
                     <LogOut className="w-3.5 h-3.5" />
@@ -144,28 +155,40 @@ export default function Navbar() {
           
           {/* Mobile User Profile Header */}
           {user ? (
-            <div className="bg-[#003823] p-3.5 rounded-2xl border border-emerald-800/80 flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-3 text-xs">
-                <div className="w-9 h-9 rounded-xl bg-[#004329] text-white flex items-center justify-center font-bold text-sm border border-emerald-500/30">
-                  {user.name.charAt(0)}
+            <div className="bg-[#003823] p-3.5 rounded-2xl border border-emerald-800/80 mb-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 text-xs">
+                  <div className="w-9 h-9 rounded-xl bg-[#004329] text-white flex items-center justify-center font-bold text-sm border border-emerald-500/30">
+                    {user.name.charAt(0)}
+                  </div>
+                  <div>
+                    <span className="font-bold text-white block">{user.name}</span>
+                    <span className="text-[11px] text-emerald-300 font-mono">
+                      {user.nik ? `NIK: ${user.nik}` : user.email}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-bold text-white block">{user.name}</span>
-                  <span className="text-[11px] text-emerald-300">
-                    {user.nik ? `NIK: ${user.nik}` : user.email}
-                  </span>
-                </div>
+                <button
+                  onClick={() => {
+                    logout();
+                    setIsOpen(false);
+                  }}
+                  className="bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-800/60 transition flex items-center space-x-1"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Keluar</span>
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  logout();
-                  setIsOpen(false);
-                }}
-                className="bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-800/60 transition flex items-center space-x-1"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Keluar</span>
-              </button>
+
+              {!user.isProfileComplete && (
+                <Link
+                  href="/lengkapi-profil"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/30 text-xs font-bold py-2 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition"
+                >
+                  <span>⚠️ Profil Belum Lengkap — Isi NIK KTP</span>
+                </Link>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2 mb-3">

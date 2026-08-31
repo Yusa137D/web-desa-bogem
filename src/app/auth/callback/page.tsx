@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react";
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectPath = searchParams.get("redirect") || "/";
+  const redirectPath = searchParams.get("redirect") || "/layanan-surat";
 
   useEffect(() => {
     async function handleAuth() {
@@ -20,20 +20,49 @@ function AuthCallbackContent() {
           return;
         }
 
-        if (data.session) {
-          router.push(redirectPath);
+        const user = data.session?.user;
+
+        if (user) {
+          // Check if user has complete profile with 16-digit NIK
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("nik, phone, no_hp")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          const hasNik = profile?.nik && profile.nik.trim().length === 16;
+          const hasPhone = (profile?.no_hp || profile?.phone) && (profile.no_hp || profile.phone).length >= 9;
+
+          if (!hasNik || !hasPhone) {
+            router.push(`/lengkapi-profil?redirect=${encodeURIComponent(redirectPath)}`);
+          } else {
+            router.push(redirectPath);
+          }
         } else {
-          // Listen once for state change
-          const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-            if (session) {
-              router.push(redirectPath);
+          // Listen once for auth state change
+          const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("nik, phone, no_hp")
+                .eq("id", session.user.id)
+                .maybeSingle();
+
+              const hasNik = profile?.nik && profile.nik.trim().length === 16;
+              const hasPhone = (profile?.no_hp || profile?.phone) && (profile.no_hp || profile.phone).length >= 9;
+
+              if (!hasNik || !hasPhone) {
+                router.push(`/lengkapi-profil?redirect=${encodeURIComponent(redirectPath)}`);
+              } else {
+                router.push(redirectPath);
+              }
             }
           });
 
           // Timeout fallback
           setTimeout(() => {
             router.push(redirectPath);
-          }, 2000);
+          }, 2500);
 
           return () => {
             authListener.subscription.unsubscribe();

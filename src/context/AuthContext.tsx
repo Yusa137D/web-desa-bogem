@@ -13,6 +13,9 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   phone?: string;
+  alamat?: string;
+  avatar_url?: string;
+  isProfileComplete?: boolean;
 }
 
 interface AuthContextType {
@@ -29,6 +32,12 @@ interface AuthContextType {
     role: UserRole;
     adminSecret?: string;
   }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
+  updateProfile: (data: {
+    nik: string;
+    nama: string;
+    phone: string;
+    alamat?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   demoLogin: (role: UserRole) => void;
 }
@@ -42,6 +51,7 @@ const AuthContext = createContext<AuthContextType>({
   loginWithSupabase: async () => ({ success: false }),
   loginWithGoogle: async () => ({ success: false }),
   registerWithSupabase: async () => ({ success: false }),
+  updateProfile: async () => ({ success: false }),
   logout: async () => {},
   demoLogin: () => {},
 });
@@ -54,9 +64,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const parseUserProfile = async (supabaseUser: SupabaseUser): Promise<UserProfile> => {
     const meta = supabaseUser.user_metadata || {};
     let role: UserRole = meta.role === "admin" ? "admin" : "warga";
-    let name: string = meta.name || meta.nama || supabaseUser.email?.split("@")[0] || "User Desa";
+    let name: string =
+      meta.full_name ||
+      meta.name ||
+      meta.nama ||
+      supabaseUser.email?.split("@")[0] ||
+      "Warga Desa";
     let nik: string = meta.nik || "";
     let phone: string = meta.phone || meta.no_hp || "";
+    let alamat: string = meta.alamat || "";
+    let avatar_url: string = meta.avatar_url || meta.picture || "";
 
     try {
       const { data: profile } = await supabase
@@ -66,14 +83,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (profile) {
-        if (profile.role) role = profile.role as UserRole;
+        if (profile.role === "admin") role = "admin";
+        else role = "warga";
         if (profile.nama) name = profile.nama;
         if (profile.nik) nik = profile.nik;
         if (profile.no_hp) phone = profile.no_hp;
+        if (profile.alamat) alamat = profile.alamat;
       }
     } catch {
       // Ignore table error if profile table is not initialized yet
     }
+
+    const isProfileComplete = Boolean(nik && nik.length === 16 && phone && phone.length >= 9);
 
     return {
       id: supabaseUser.id,
@@ -82,6 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name,
       role,
       phone,
+      alamat,
+      avatar_url,
+      isProfileComplete,
     };
   };
 
@@ -244,7 +268,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             nik: cleanNik,
             name: data.nama,
+            nama: data.nama,
             phone: data.phone,
+            no_hp: data.phone,
             role: data.role,
           },
         },
@@ -255,16 +281,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error.message.includes("already registered")) {
           errorMsg = "Email ini sudah terdaftar. Silakan lakukan Login.";
         } else if (error.message.includes("Password should be at least")) {
-          errorMsg = "Kata sandi minimal 6 karakter.";
+          errorMsg = "Kata sandi minimal 8 karakter.";
         } else if (error.message.toLowerCase().includes("error sending confirmation email")) {
-          errorMsg = "Gagal mengirim email konfirmasi. Pengaturan Custom SMTP belum sesuai, atau silakan nonaktifkan 'Confirm email' di Supabase agar registrasi aktif instan.";
+          errorMsg = "Gagal mengirim email konfirmasi. Silakan periksa Custom SMTP di Supabase.";
         } else if (error.message.toLowerCase().includes("rate limit") || error.message.toLowerCase().includes("exceeded")) {
-          errorMsg = "Batas pengiriman email Supabase tercapai. Harap nonaktifkan 'Confirm email' di dashboard Supabase atau periksa Custom SMTP Anda.";
+          errorMsg = "Batas pengiriman email Supabase tercapai. Silakan coba beberapa saat lagi.";
         }
         return { success: false, error: errorMsg };
       }
 
-      // Try inserting to profiles table
+      // Insert to profiles table
       if (authData.user) {
         try {
           await supabase.from("profiles").upsert([
@@ -279,10 +305,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             },
           ]);
         } catch {
-          // Table insert failure is non-fatal if profiles table isn't created yet
+          // Table insert failure is non-fatal
         }
 
-        // Check if user session was created immediately or requires email confirmation
         const needsConfirmation = !authData.session;
 
         if (!needsConfirmation) {
@@ -293,6 +318,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: data.nama,
             role: data.role,
             phone: data.phone,
+            isProfileComplete: true,
           };
           setUser(profile);
           return { success: true, needsEmailConfirmation: false };
@@ -304,6 +330,100 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true, needsEmailConfirmation: false };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat mendaftar.";
+      return { success: false, error: msg };
+    }
+  };
+
+  // Update profile for Google users & existing citizens
+  const updateProfile = async (data: {
+    nik: string;
+    nama: string;
+    phone: string;
+    alamat?: string;
+  }) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentUser = sessionData.session?.user;
+      if (!currentUser) {
+        return { success: false, error: "Sesi pengguna tidak aktif. Silakan masuk kembali." };
+      }
+
+      const cleanNik = data.nik.trim();
+      const cleanPhone = data.phone.trim();
+      const cleanNama = data.nama.trim();
+
+      // 1. Check if NIK already used by another account
+      const { data: existingNik } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("nik", cleanNik)
+        .neq("id", currentUser.id)
+        .maybeSingle();
+
+      if (existingNik) {
+        return {
+          success: false,
+          error: "NIK ini sudah terdaftar pada akun warga lain. Periksa kembali NIK KTP Anda.",
+        };
+      }
+
+      // 2. Update profiles table
+      const { error: profileErr } = await supabase.from("profiles").upsert([
+        {
+          id: currentUser.id,
+          nik: cleanNik,
+          nama: cleanNama,
+          no_hp: cleanPhone,
+          alamat: data.alamat || "",
+          email: currentUser.email,
+          role: "warga",
+          updated_at: new Date().toISOString(),
+        },
+      ]);
+
+      if (profileErr) {
+        return { success: false, error: profileErr.message };
+      }
+
+      // 3. Update auth user metadata
+      await supabase.auth.updateUser({
+        data: {
+          nik: cleanNik,
+          name: cleanNama,
+          nama: cleanNama,
+          phone: cleanPhone,
+          no_hp: cleanPhone,
+          alamat: data.alamat || "",
+          role: "warga",
+        },
+      });
+
+      // 4. Update local state
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              nik: cleanNik,
+              name: cleanNama,
+              phone: cleanPhone,
+              alamat: data.alamat || "",
+              isProfileComplete: true,
+            }
+          : {
+              id: currentUser.id,
+              email: currentUser.email || "",
+              nik: cleanNik,
+              name: cleanNama,
+              phone: cleanPhone,
+              alamat: data.alamat || "",
+              role: "warga",
+              isProfileComplete: true,
+            }
+      );
+
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal memperbarui profil data warga.";
       return { success: false, error: msg };
     }
   };
@@ -335,7 +455,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Demo mode login for testing offline or presentation
+  // Demo mode login
   const demoLogin = (role: UserRole) => {
     const demoProfile: UserProfile = {
       id: role === "admin" ? "demo-admin-id" : "demo-warga-id",
@@ -344,6 +464,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: role === "admin" ? "Admin Desa" : "Budi Santoso (Warga)",
       role: role,
       phone: "081234567890",
+      isProfileComplete: true,
     };
     setUser(demoProfile);
     localStorage.setItem("desa_demo_user", JSON.stringify(demoProfile));
@@ -367,6 +488,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithSupabase,
         loginWithGoogle,
         registerWithSupabase,
+        updateProfile,
         logout,
         demoLogin,
       }}
