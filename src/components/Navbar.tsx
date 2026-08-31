@@ -55,7 +55,7 @@ export default function Navbar() {
             </div>
             <div className="flex flex-col">
               <span className="text-base sm:text-lg lg:text-xl font-extrabold tracking-tight text-white group-hover:text-emerald-200 transition leading-tight">
-                Web Desa Bogem
+                Desa Bogem
               </span>
               <span className="text-[10px] sm:text-xs text-emerald-200/90 font-medium">
                 Kec. Kawedanan, Kab. Magetan

@@ -59,8 +59,8 @@ export default function Footer() {
                 />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white tracking-wide">Web Desa Bogem</h3>
-                <p className="text-xs text-emerald-300">Kec. Kawedanan, Kab. Magetan</p>
+                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Desa Bogem</h3>
+                <p className="text-xs text-emerald-300/90">Kec. Kawedanan, Kab. Magetan</p>
               </div>
             </div>
             <p className="text-sm text-emerald-200/80 leading-relaxed">

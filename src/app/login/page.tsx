@@ -98,9 +98,13 @@ function LoginForm() {
         
         {/* Header Logo */}
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center space-x-3 group">
-            <div className="w-12 h-12 rounded-2xl bg-[#004329] text-white flex items-center justify-center shadow-lg group-hover:scale-105 transition">
-              <Store className="w-6 h-6 text-emerald-300" />
+          <Link href="/" className="inline-flex items-center justify-center group mb-1">
+            <div className="relative w-12 h-14 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+              <img
+                src="/images/logo-magetan.png"
+                alt="Logo Kabupaten Magetan"
+                className="w-full h-full object-contain drop-shadow"
+              />
             </div>
           </Link>
           <h1 className="text-2xl font-extrabold text-slate-900">Masuk Akun Warga</h1>
