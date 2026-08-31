@@ -3,10 +3,25 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { isValidGmail, isValidPhone, isValidPassword, isValidNIK, validatePassword } from "@/utils/validators";
-import { User, Lock, Mail, Phone, ArrowRight, Store, CheckCircle2, AlertCircle, Eye, EyeOff, Loader2, CreditCard, MailCheck, RefreshCw, LogIn } from "lucide-react";
+import { isValidGmail, isValidPhone, isValidNIK, validatePassword } from "@/utils/validators";
+import {
+  User,
+  Lock,
+  Mail,
+  Phone,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Loader2,
+  CreditCard,
+  KeyRound,
+  LogIn,
+  ArrowLeft,
+} from "lucide-react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import OtpCodeInput from "@/components/auth/OtpCodeInput";
 
 function GoogleIcon() {
   return (
@@ -35,7 +50,7 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "";
-  const { registerWithSupabase, loginWithGoogle, user } = useAuth();
+  const { registerWithSupabase, verifyRegisterOtp, resendRegisterOtp, loginWithGoogle, user } = useAuth();
 
   const [nik, setNik] = useState("");
   const [nama, setNama] = useState("");
@@ -49,13 +64,12 @@ function RegisterForm() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [resendStatus, setResendStatus] = useState("");
 
-  // If already logged in, redirect safely via useEffect
+  // If already logged in, redirect safely
   useEffect(() => {
     const urlError = searchParams.get("error");
     if (urlError) {
@@ -64,7 +78,7 @@ function RegisterForm() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !otpSent) {
       if (user.role === "admin") {
         router.replace("/admin");
       } else if (user.isProfileComplete === false) {
@@ -73,7 +87,7 @@ function RegisterForm() {
         router.replace(redirectPath || "/");
       }
     }
-  }, [user, redirectPath, router]);
+  }, [user, redirectPath, router, otpSent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +99,6 @@ function RegisterForm() {
       return;
     }
 
-    // Form Client Validations
     if (!nama || nama.trim().length < 2) {
       setError("Silakan masukkan nama lengkap yang valid sesuai KTP.");
       return;
@@ -122,19 +135,37 @@ function RegisterForm() {
       role: "warga",
     });
 
+    setLoading(false);
+
     if (!res.success) {
       setError(res.error || "Gagal melakukan pendaftaran.");
-      setLoading(false);
     } else {
-      setLoading(false);
       if (res.needsEmailConfirmation) {
-        setEmailConfirmationRequired(true);
+        setOtpSent(true);
       } else {
         setSuccess(true);
         setTimeout(() => {
           router.push(redirectPath || "/");
         }, 1200);
       }
+    }
+  };
+
+  const handleVerifyOtp = async (code: string) => {
+    setError("");
+    setVerifyingOtp(true);
+
+    const res = await verifyRegisterOtp(email, code);
+
+    setVerifyingOtp(false);
+
+    if (!res.success) {
+      setError(res.error || "Kode OTP tidak valid.");
+    } else {
+      setSuccess(true);
+      setTimeout(() => {
+        router.push(redirectPath || "/layanan-surat");
+      }, 1200);
     }
   };
 
@@ -145,27 +176,6 @@ function RegisterForm() {
     if (!res.success) {
       setError(res.error || "Gagal mendaftar dengan akun Google.");
       setGoogleLoading(false);
-    }
-  };
-
-  const handleResendEmail = async () => {
-    if (!email) return;
-    setResending(true);
-    setResendStatus("");
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: email.trim().toLowerCase(),
-      });
-      if (error) {
-        setResendStatus("Gagal mengirim ulang: " + error.message);
-      } else {
-        setResendStatus("✓ Email konfirmasi baru telah dikirimkan ke inbox Anda.");
-      }
-    } catch {
-      setResendStatus("Terjadi kesalahan jaringan.");
-    } finally {
-      setResending(false);
     }
   };
 
@@ -192,52 +202,63 @@ function RegisterForm() {
 
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
           
-          {/* SCREEN: EMAIL CONFIRMATION SENT */}
-          {emailConfirmationRequired ? (
-            <div className="space-y-6 text-center animate-in zoom-in-95 duration-200 py-4">
+          {/* SCREEN: OTP CODE VERIFICATION */}
+          {otpSent ? (
+            <div className="space-y-6 text-center animate-in zoom-in-95 duration-200 py-2">
               <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto border border-emerald-200 shadow-sm">
-                <MailCheck className="w-8 h-8 text-emerald-700" />
+                <KeyRound className="w-8 h-8 text-emerald-700" />
               </div>
 
               <div className="space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full inline-block border border-emerald-200">
-                  Langkah Terakhir
+                  Verifikasi Akun
                 </span>
                 <h2 className="text-xl font-bold text-slate-900">
-                  Periksa Email Konfirmasi Anda
+                  Masukkan Kode OTP 6-Digit
                 </h2>
                 <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-                  Tautan aktivasi akun telah dikirim ke: <br />
+                  Kode verifikasi pendaftaran akun telah dikirim ke: <br />
                   <strong className="text-slate-900 font-mono text-sm bg-slate-100 px-2 py-0.5 rounded inline-block mt-1">{email}</strong>
                 </p>
                 <p className="text-[11px] text-slate-500 max-w-xs mx-auto pt-1">
-                  Silakan buka inbox (atau folder spam) email Anda dan klik tautan konfirmasi untuk mengaktifkan akun warga Anda.
+                  Periksa inbox atau folder spam email Anda dan masukkan 6 digit angka di bawah ini.
                 </p>
               </div>
 
-              {resendStatus && (
-                <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-semibold border border-emerald-200">
-                  {resendStatus}
+              {success && (
+                <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  <span>Akun Anda berhasil diverifikasi! Mengalihkan ke layanan...</span>
                 </div>
               )}
 
-              <div className="space-y-3 pt-2">
-                <Link
-                  href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`}
-                  className="w-full bg-[#063321] hover:bg-[#073d28] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-sm active:scale-95"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>Buka Halaman Masuk</span>
-                </Link>
+              {error && (
+                <div className="p-3 bg-rose-50 text-rose-700 rounded-2xl border border-rose-200 text-xs font-medium flex items-center space-x-2.5 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
 
+              {/* 6-Digit OTP Box Component */}
+              <OtpCodeInput
+                email={email}
+                onComplete={handleVerifyOtp}
+                onResend={() => resendRegisterOtp(email)}
+                loading={verifyingOtp}
+                disabled={success}
+              />
+
+              <div className="pt-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={handleResendEmail}
-                  disabled={resending}
-                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold py-2.5 px-4 rounded-xl border border-slate-200 transition flex items-center justify-center space-x-1.5 text-xs active:scale-95 disabled:opacity-60"
+                  onClick={() => {
+                    setOtpSent(false);
+                    setError("");
+                  }}
+                  className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-slate-800 transition font-medium"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${resending ? "animate-spin text-emerald-700" : ""}`} />
-                  <span>{resending ? "Mengirim Ulang..." : "Kirim Ulang Email Konfirmasi"}</span>
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Ubah Data / Gunakan Email Lain</span>
                 </button>
               </div>
             </div>
@@ -259,19 +280,17 @@ function RegisterForm() {
                 <span>{googleLoading ? "Menghubungkan ke Google..." : "Daftar Cepat dengan Akun Google"}</span>
               </button>
 
-              {/* Divider */}
               <div className="relative flex items-center justify-center">
-                <div className="border-t border-slate-200/80 w-full"></div>
-                <span className="bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  atau Lengkapi Form NIK
+                <div className="border-t border-slate-200 w-full" />
+                <span className="bg-white px-3 text-[11px] text-slate-400 font-medium uppercase tracking-wider absolute">
+                  atau daftar dengan NIK
                 </span>
-                <div className="border-t border-slate-200/80 w-full"></div>
               </div>
 
               {success && (
                 <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  <span>Pendaftaran berhasil! Mengalihkan ke sistem...</span>
+                  <span>Pendaftaran Berhasil! Membuka halaman utama...</span>
                 </div>
               )}
 
@@ -301,14 +320,16 @@ function RegisterForm() {
                       value={nik}
                       onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, ""))}
                       placeholder="Contoh: 3520xxxxxxxxxxxx"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-bold tracking-wider"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-bold tracking-wider font-mono"
                     />
                   </div>
+                  <span className="text-[10px] text-slate-400 block mt-1">NIK digunakan untuk mengakses seluruh permohonan surat warga.</span>
                 </div>
 
+                {/* Nama Lengkap */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                    Nama Lengkap
+                    Nama Lengkap (Sesuai KTP)
                   </label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -323,9 +344,11 @@ function RegisterForm() {
                   </div>
                 </div>
 
+                {/* Email (@gmail.com) */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                    Alamat Email
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
+                    <span>Email Aktif</span>
+                    <span className="text-[10px] text-slate-400 font-normal">@gmail.com</span>
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -334,15 +357,19 @@ function RegisterForm() {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="budi@gmail.com"
+                      placeholder="nama@gmail.com"
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                   </div>
                 </div>
 
+                {/* Nomor HP/WhatsApp */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                    No. HP / WhatsApp
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
+                    <span>Nomor WhatsApp / HP</span>
+                    <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80">
+                      Untuk Notifikasi Surat
+                    </span>
                   </label>
                   <div className="relative">
                     <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -352,14 +379,16 @@ function RegisterForm() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="Contoh: 081234567890"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium font-mono"
                     />
                   </div>
                 </div>
 
+                {/* Password Input */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                    Kata Sandi
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
+                    <span>Kata Sandi</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Min. 8 Karakter</span>
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -368,42 +397,55 @@ function RegisterForm() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 8 karakter, huruf besar, kecil, angka"
+                      placeholder="••••••••"
                       className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                </div>
 
-                {/* Password Complexity Checklist */}
-                {password.length > 0 && (
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-1.5 animate-in fade-in duration-200">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                      Kriteria Keamanan Kata Sandi:
-                    </span>
-                    <div className="grid grid-cols-2 gap-1 text-[11px]">
-                      <div className={`flex items-center space-x-1.5 ${passReqs.hasMinLength ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
-                        <span>{passReqs.hasMinLength ? "✓" : "○"} Min. 8 Karakter</span>
-                      </div>
-                      <div className={`flex items-center space-x-1.5 ${passReqs.hasUpperCase ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
-                        <span>{passReqs.hasUpperCase ? "✓" : "○"} Huruf Besar (A-Z)</span>
-                      </div>
-                      <div className={`flex items-center space-x-1.5 ${passReqs.hasLowerCase ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
-                        <span>{passReqs.hasLowerCase ? "✓" : "○"} Huruf Kecil (a-z)</span>
-                      </div>
-                      <div className={`flex items-center space-x-1.5 ${passReqs.hasNumber ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
-                        <span>{passReqs.hasNumber ? "✓" : "○"} Angka (0-9)</span>
+                  {/* Real-time Password Requirements Checklist */}
+                  {password.length > 0 && (
+                    <div className="mt-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1.5 animate-in fade-in duration-200">
+                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">
+                        Standar Kata Sandi Aman:
+                      </span>
+                      <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                        <div className={`flex items-center space-x-1.5 ${passReqs.hasMinLength ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
+                          <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${passReqs.hasMinLength ? "bg-emerald-100 text-emerald-800 font-bold" : "bg-slate-200 text-slate-500"}`}>
+                            {passReqs.hasMinLength ? "✓" : "•"}
+                          </span>
+                          <span>Min. 8 karakter</span>
+                        </div>
+                        <div className={`flex items-center space-x-1.5 ${passReqs.hasUpperCase ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
+                          <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${passReqs.hasUpperCase ? "bg-emerald-100 text-emerald-800 font-bold" : "bg-slate-200 text-slate-500"}`}>
+                            {passReqs.hasUpperCase ? "✓" : "•"}
+                          </span>
+                          <span>Huruf besar (A-Z)</span>
+                        </div>
+                        <div className={`flex items-center space-x-1.5 ${passReqs.hasLowerCase ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
+                          <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${passReqs.hasLowerCase ? "bg-emerald-100 text-emerald-800 font-bold" : "bg-slate-200 text-slate-500"}`}>
+                            {passReqs.hasLowerCase ? "✓" : "•"}
+                          </span>
+                          <span>Huruf kecil (a-z)</span>
+                        </div>
+                        <div className={`flex items-center space-x-1.5 ${passReqs.hasNumber ? "text-emerald-700 font-bold" : "text-slate-400"}`}>
+                          <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${passReqs.hasNumber ? "bg-emerald-100 text-emerald-800 font-bold" : "bg-slate-200 text-slate-500"}`}>
+                            {passReqs.hasNumber ? "✓" : "•"}
+                          </span>
+                          <span>Angka (0-9)</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
+                {/* Confirm Password */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
                     Konfirmasi Kata Sandi
@@ -415,16 +457,19 @@ function RegisterForm() {
                       required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Ketik ulang kata sandi"
+                      placeholder="Ulangi kata sandi"
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                   </div>
+                  {confirmPassword && password !== confirmPassword && (
+                    <span className="text-[10px] text-rose-500 mt-1 block">Konfirmasi kata sandi belum cocok.</span>
+                  )}
                 </div>
 
                 <button
                   type="submit"
-                  disabled={loading || success || googleLoading}
-                  className="w-full bg-[#063321] hover:bg-[#073d28] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-sm mt-2 disabled:opacity-70 active:scale-95"
+                  disabled={loading || success}
+                  className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md mt-2 disabled:opacity-70 active:scale-95"
                 >
                   {loading ? (
                     <>
@@ -433,18 +478,21 @@ function RegisterForm() {
                     </>
                   ) : (
                     <>
-                      <span>Daftar Akun Warga Sekarang</span>
+                      <span>Kirim Kode OTP Verifikasi</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
               </form>
 
-              <div className="text-center pt-2 border-t border-slate-100">
+              <div className="pt-2 text-center border-t border-slate-100">
                 <p className="text-xs text-slate-500">
-                  Sudah punya akun warga?{" "}
-                  <Link href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`} className="font-bold text-emerald-800 hover:underline">
-                    Masuk di Sini
+                  Sudah memiliki akun warga?{" "}
+                  <Link
+                    href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`}
+                    className="text-[#004329] font-bold hover:underline"
+                  >
+                    Masuk di sini
                   </Link>
                 </p>
               </div>
@@ -459,11 +507,13 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#004329]" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#004329]" />
+        </div>
+      }
+    >
       <RegisterForm />
     </Suspense>
   );

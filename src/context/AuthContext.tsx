@@ -31,6 +31,10 @@ interface AuthContextType {
     role: UserRole;
     adminSecret?: string;
   }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
+  verifyRegisterOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
+  resendRegisterOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyRecoveryOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
+  resendRecoveryOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (data: {
     nik: string;
     nama: string;
@@ -46,6 +50,10 @@ const AuthContext = createContext<AuthContextType>({
   loginWithSupabase: async () => ({ success: false }),
   loginWithGoogle: async () => ({ success: false }),
   registerWithSupabase: async () => ({ success: false }),
+  verifyRegisterOtp: async () => ({ success: false }),
+  resendRegisterOtp: async () => ({ success: false }),
+  verifyRecoveryOtp: async () => ({ success: false }),
+  resendRecoveryOtp: async () => ({ success: false }),
   updateProfile: async () => ({ success: false }),
   logout: async () => {},
   demoLogin: () => {},
@@ -489,6 +497,121 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  // Verify 6-digit OTP code for registration
+  const verifyRegisterOtp = async (email: string, token: string) => {
+    if (!supabase) return { success: false, error: "Layanan database belum siap." };
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanToken = token.trim();
+
+      // 1. Try verify with type: 'signup'
+      let { data, error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: cleanToken,
+        type: "signup",
+      });
+
+      // 2. Fallback to type: 'email' if signup type is rejected
+      if (error) {
+        const fallback = await supabase.auth.verifyOtp({
+          email: cleanEmail,
+          token: cleanToken,
+          type: "email",
+        });
+        if (!fallback.error && fallback.data) {
+          data = fallback.data;
+          error = null;
+        }
+      }
+
+      if (error) {
+        let msg = "Kode OTP tidak valid atau sudah kadaluarsa.";
+        if (error.message.toLowerCase().includes("token has expired") || error.message.toLowerCase().includes("expired")) {
+          msg = "Kode OTP sudah kadaluarsa. Silakan klik 'Kirim Ulang Kode OTP'.";
+        }
+        return { success: false, error: msg };
+      }
+
+      if (data?.user) {
+        const profile = await parseUserProfile(data.user);
+        setUser(profile);
+      }
+
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal memverifikasi kode OTP.";
+      return { success: false, error: msg };
+    }
+  };
+
+  // Resend 6-digit OTP code for registration
+  const resendRegisterOtp = async (email: string) => {
+    if (!supabase) return { success: false, error: "Layanan database belum siap." };
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: cleanEmail,
+      });
+      if (error) {
+        return { success: false, error: "Gagal mengirim ulang kode: " + error.message };
+      }
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengirim ulang kode OTP.";
+      return { success: false, error: msg };
+    }
+  };
+
+  // Verify 6-digit OTP code for password recovery
+  const verifyRecoveryOtp = async (email: string, token: string) => {
+    if (!supabase) return { success: false, error: "Layanan database belum siap." };
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanToken = token.trim();
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: cleanToken,
+        type: "recovery",
+      });
+
+      if (error) {
+        let msg = "Kode OTP pemulihan tidak valid atau sudah kadaluarsa.";
+        if (error.message.toLowerCase().includes("expired")) {
+          msg = "Kode OTP sudah kadaluarsa. Silakan kirim ulang kode baru.";
+        }
+        return { success: false, error: msg };
+      }
+
+      if (data?.user) {
+        const profile = await parseUserProfile(data.user);
+        setUser(profile);
+      }
+
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal memverifikasi kode OTP.";
+      return { success: false, error: msg };
+    }
+  };
+
+  // Resend recovery email / OTP
+  const resendRecoveryOtp = async (email: string) => {
+    if (!supabase) return { success: false, error: "Layanan database belum siap." };
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengirim ulang kode pemulihan.";
+      return { success: false, error: msg };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -497,6 +620,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithSupabase,
         loginWithGoogle,
         registerWithSupabase,
+        verifyRegisterOtp,
+        resendRegisterOtp,
+        verifyRecoveryOtp,
+        resendRecoveryOtp,
         updateProfile,
         logout,
         demoLogin,
