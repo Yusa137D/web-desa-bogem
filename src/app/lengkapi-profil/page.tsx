@@ -217,17 +217,17 @@ function LengkapiProfilForm() {
           </Link>
           <div className="inline-flex items-center space-x-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Verifikasi Akun Warga Desa Bogem</span>
+            <span>Tahap 2: Data Kependudukan Warga</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Lengkapi Data Profil</h1>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Hubungkan NIK KTP Anda dengan Akun Google untuk mengakses Layanan Surat Desa Bogem secara resmi dan aman.
+            Email Anda telah terverifikasi. Masukkan NIK KTP Anda untuk mengaktifkan akses Layanan Surat Mandiri Desa Bogem secara resmi.
           </p>
         </div>
 
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6 animate-in fade-in zoom-in-95 duration-200">
           
-          {/* Google Connected Badge Card */}
+          {/* Email Verified Badge Card */}
           <div className="bg-emerald-50/80 border border-emerald-200/80 p-3.5 rounded-2xl flex items-center justify-between text-xs">
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 rounded-xl bg-white border border-emerald-200 text-emerald-800 flex items-center justify-center font-bold text-xs shadow-sm overflow-hidden flex-shrink-0">
@@ -244,7 +244,7 @@ function LengkapiProfilForm() {
             </div>
             <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center space-x-1 flex-shrink-0">
               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              <span>Terhubung</span>
+              <span>Email Terverifikasi</span>
             </span>
           </div>
 

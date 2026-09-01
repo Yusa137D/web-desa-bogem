@@ -44,7 +44,7 @@ function AuthCallbackContent() {
         if (supabase) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("nik, phone, no_hp, role")
+            .select("*")
             .eq("id", user.id)
             .maybeSingle();
 
@@ -78,7 +78,7 @@ function AuthCallbackContent() {
       const errorDescription = searchParams.get("error_description");
       if (urlError || errorDescription) {
         cleanup();
-        const msg = errorDescription || urlError || "Gagal masuk dengan akun Google.";
+        const msg = errorDescription || urlError || "Gagal masuk atau verifikasi akun.";
         router.replace(`/login?error=${encodeURIComponent(msg)}`);
         return;
       }
@@ -97,7 +97,7 @@ function AuthCallbackContent() {
           if (exchangeError) {
             console.error("exchangeCodeForSession error:", exchangeError);
             cleanup();
-            router.replace(`/login?error=${encodeURIComponent("Gagal verifikasi sesi Google: " + exchangeError.message)}`);
+            router.replace(`/login?error=${encodeURIComponent("Gagal verifikasi sesi: " + exchangeError.message)}`);
             return;
           }
 
@@ -149,8 +149,8 @@ function AuthCallbackContent() {
         <Loader2 className="w-8 h-8 animate-spin text-emerald-700" />
       </div>
       <div className="space-y-1">
-        <h2 className="text-lg font-bold text-slate-900">Menghubungkan Akun Google...</h2>
-        <p className="text-xs text-slate-500">Mohon tunggu sebentar, kami sedang memverifikasi sesi login Anda.</p>
+        <h2 className="text-lg font-bold text-slate-900">Memverifikasi Akun Warga...</h2>
+        <p className="text-xs text-slate-500">Mohon tunggu sebentar, kami sedang memverifikasi sesi login & email Anda.</p>
       </div>
     </div>
   );

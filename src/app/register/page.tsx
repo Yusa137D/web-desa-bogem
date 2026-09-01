@@ -50,12 +50,9 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "";
-  const { registerWithSupabase, loginWithGoogle, user } = useAuth();
+  const { registerWithSupabase, resendVerificationEmail, loginWithGoogle, user } = useAuth();
 
-  const [nik, setNik] = useState("");
-  const [nama, setNama] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -65,10 +62,12 @@ function RegisterForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendStatus, setResendStatus] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   // If already logged in, redirect safely
   useEffect(() => {
@@ -90,28 +89,25 @@ function RegisterForm() {
     }
   }, [user, redirectPath, router, emailConfirmationRequired]);
 
+  // Cooldown timer for resend email
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // NIK validation
-    if (!isValidNIK(nik)) {
-      setError("NIK wajib 16 digit angka sesuai KTP Anda.");
-      return;
-    }
+    const cleanEmail = email.trim().toLowerCase();
 
-    if (!nama || nama.trim().length < 2) {
-      setError("Silakan masukkan nama lengkap yang valid sesuai KTP.");
-      return;
-    }
-
-    if (!isValidGmail(email)) {
+    if (!isValidGmail(cleanEmail)) {
       setError("Email wajib menggunakan domain Google Mail (@gmail.com). Contoh: nama@gmail.com");
-      return;
-    }
-
-    if (!isValidPhone(phone)) {
-      setError("Silakan masukkan nomor telepon/WhatsApp aktif yang valid.");
       return;
     }
 
@@ -128,12 +124,8 @@ function RegisterForm() {
     setLoading(true);
 
     const res = await registerWithSupabase({
-      nik: nik.trim(),
-      email,
+      email: cleanEmail,
       password,
-      nama,
-      phone,
-      role: "warga",
     });
 
     setLoading(false);
@@ -141,12 +133,14 @@ function RegisterForm() {
     if (!res.success) {
       setError(res.error || "Gagal melakukan pendaftaran.");
     } else {
+      setRegisteredEmail(cleanEmail);
       if (res.needsEmailConfirmation) {
         setEmailConfirmationRequired(true);
+        setResendCooldown(60);
       } else {
         setSuccess(true);
         setTimeout(() => {
-          router.push(redirectPath || "/");
+          router.push(`/lengkapi-profil${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`);
         }, 1200);
       }
     }
@@ -155,7 +149,7 @@ function RegisterForm() {
   const handleGoogleSignup = async () => {
     setError("");
     setGoogleLoading(true);
-    const res = await loginWithGoogle(redirectPath);
+    const res = await loginWithGoogle(redirectPath || "/lengkapi-profil");
     if (!res.success) {
       setError(res.error || "Gagal mendaftar dengan akun Google.");
       setGoogleLoading(false);
@@ -163,24 +157,21 @@ function RegisterForm() {
   };
 
   const handleResendEmail = async () => {
-    if (!email) return;
+    const target = registeredEmail || email.trim();
+    if (!target) return;
+    if (resendCooldown > 0) return;
+
     setResending(true);
     setResendStatus("");
-    try {
-      if (!supabase) return;
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: email.trim().toLowerCase(),
-      });
-      if (error) {
-        setResendStatus("Gagal mengirim ulang: " + error.message);
-      } else {
-        setResendStatus("✓ Email konfirmasi baru telah dikirimkan ke inbox Anda.");
-      }
-    } catch {
-      setResendStatus("Terjadi kesalahan jaringan.");
-    } finally {
-      setResending(false);
+
+    const res = await resendVerificationEmail(target);
+    setResending(false);
+
+    if (!res.success) {
+      setResendStatus(`Gagal mengirim ulang: ${res.error}`);
+    } else {
+      setResendStatus("✓ Tautan aktivasi baru berhasil dikirimkan ke Gmail Anda. Silakan cek Inbox atau folder Spam.");
+      setResendCooldown(60);
     }
   };
 
@@ -199,9 +190,12 @@ function RegisterForm() {
               />
             </div>
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">Pendaftaran Akun Warga</h1>
+          <div className="inline-flex items-center space-x-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
+            <span>Tahap 1: Registrasi Akun Warga</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Daftar Akun Baru</h1>
           <p className="text-xs text-slate-500">
-            Daftarkan NIK KTP Anda untuk mengajukan surat mandiri & layanan digital desa
+            Daftarkan email Anda untuk verifikasi akun & akses layanan digital desa
           </p>
         </div>
 
@@ -209,25 +203,36 @@ function RegisterForm() {
           
           {/* SCREEN: EMAIL CONFIRMATION SENT */}
           {emailConfirmationRequired ? (
-            <div className="space-y-6 text-center animate-in zoom-in-95 duration-200 py-4">
+            <div className="space-y-6 text-center animate-in zoom-in-95 duration-200 py-2">
               <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto border border-emerald-200 shadow-sm">
                 <MailCheck className="w-8 h-8 text-emerald-700" />
               </div>
 
               <div className="space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full inline-block border border-emerald-200">
-                  Langkah Terakhir
+                  Verifikasi Email Dikirim
                 </span>
                 <h2 className="text-xl font-bold text-slate-900">
-                  Periksa Email Konfirmasi Anda
+                  Periksa Kotak Masuk Gmail Anda
                 </h2>
                 <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-                  Tautan aktivasi akun telah dikirim ke: <br />
-                  <strong className="text-slate-900 font-mono text-sm bg-slate-100 px-2 py-0.5 rounded inline-block mt-1">{email}</strong>
+                  Tautan aktivasi akun telah dikirimkan ke: <br />
+                  <strong className="text-slate-900 font-mono text-sm bg-slate-100 px-2.5 py-1 rounded inline-block mt-1.5 border border-slate-200">
+                    {registeredEmail || email}
+                  </strong>
                 </p>
-                <p className="text-[11px] text-slate-500 max-w-xs mx-auto pt-1">
-                  Silakan buka inbox atau folder spam email Anda dan klik tautan konfirmasi untuk mengaktifkan akun warga Anda.
-                </p>
+                
+                <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-3 text-left space-y-1 mt-3">
+                  <div className="flex items-center space-x-1.5 text-amber-900 font-bold text-[11px]">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                    <span>Langkah Selanjutnya:</span>
+                  </div>
+                  <ol className="text-[11px] text-amber-800 list-decimal list-inside space-y-1 pl-0.5">
+                    <li>Buka Gmail (periksa folder <strong>Inbox / Spam / Promosi</strong>).</li>
+                    <li>Klik tombol <strong>&quot;Confirm your mail&quot;</strong> pada email yang masuk.</li>
+                    <li>Setelah aktif, Anda akan langsung diarahkan untuk <strong>mengisi data kependudukan (NIK KTP)</strong>.</li>
+                  </ol>
+                </div>
               </div>
 
               {resendStatus && (
@@ -238,28 +243,45 @@ function RegisterForm() {
                 </div>
               )}
 
-              <div className="space-y-3 pt-2">
-                <Link
-                  href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`}
+              <div className="space-y-2.5 pt-2">
+                <a
+                  href="https://mail.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md active:scale-95"
                 >
-                  <LogIn className="w-4 h-4" />
-                  <span>Buka Halaman Masuk</span>
-                </Link>
+                  <span>Buka Web / Aplikasi Gmail ↗</span>
+                </a>
 
                 <button
                   type="button"
                   onClick={handleResendEmail}
-                  disabled={resending}
+                  disabled={resending || resendCooldown > 0}
                   className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold py-2.5 px-4 rounded-xl border border-slate-200 transition flex items-center justify-center space-x-1.5 text-xs active:scale-95 disabled:opacity-60"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${resending ? "animate-spin text-emerald-700" : ""}`} />
-                  <span>{resending ? "Mengirim Ulang..." : "Kirim Ulang Email Konfirmasi"}</span>
+                  <span>
+                    {resending
+                      ? "Mengirim Ulang..."
+                      : resendCooldown > 0
+                      ? `Kirim Ulang Email (${resendCooldown}s)`
+                      : "Kirim Ulang Email Konfirmasi"}
+                  </span>
                 </button>
+
+                <div className="pt-2">
+                  <Link
+                    href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`}
+                    className="inline-flex items-center space-x-1 text-xs font-semibold text-emerald-800 hover:underline"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Sudah klik konfirmasi di Gmail? Masuk di sini</span>
+                  </Link>
+                </div>
               </div>
             </div>
           ) : (
-            /* FORM DAFTAR AKUN WARGA */
+            /* FORM DAFTAR AKUN WARGA (TAHAP 1: EMAIL & PASSWORD) */
             <>
               {/* 1-Click Google Sign Up */}
               <button
@@ -279,14 +301,14 @@ function RegisterForm() {
               <div className="relative flex items-center justify-center">
                 <div className="border-t border-slate-200 w-full" />
                 <span className="bg-white px-3 text-[11px] text-slate-400 font-medium uppercase tracking-wider absolute">
-                  atau daftar dengan NIK
+                  atau gunakan email gmail
                 </span>
               </div>
 
               {success && (
                 <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  <span>Pendaftaran Berhasil! Membuka halaman utama...</span>
+                  <span>Pendaftaran Berhasil! Membuka halaman berikutnya...</span>
                 </div>
               )}
 
@@ -299,52 +321,13 @@ function RegisterForm() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 
-                {/* NIK Input */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
-                    <span>NIK KTP (16 Digit)</span>
-                    <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80">
-                      Wajib Sesuai KTP
-                    </span>
-                  </label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
-                      required
-                      maxLength={16}
-                      value={nik}
-                      onChange={(e) => setNik(e.target.value.replace(/[^0-9]/g, ""))}
-                      placeholder="Contoh: 3520xxxxxxxxxxxx"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-bold tracking-wider font-mono"
-                    />
-                  </div>
-                  <span className="text-[10px] text-slate-400 block mt-1">NIK digunakan untuk mengakses seluruh permohonan surat warga.</span>
-                </div>
-
-                {/* Nama Lengkap */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                    Nama Lengkap (Sesuai KTP)
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="text"
-                      required
-                      value={nama}
-                      onChange={(e) => setNama(e.target.value)}
-                      placeholder="Contoh: Budi Santoso"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
-                    />
-                  </div>
-                </div>
-
                 {/* Email (@gmail.com) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
-                    <span>Email Aktif</span>
-                    <span className="text-[10px] text-slate-400 font-normal">@gmail.com</span>
+                    <span>Alamat Email Gmail</span>
+                    <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80">
+                      @gmail.com
+                    </span>
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -353,31 +336,13 @@ function RegisterForm() {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="nama@gmail.com"
+                      placeholder="namaanda@gmail.com"
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium"
                     />
                   </div>
-                </div>
-
-                {/* Nomor HP/WhatsApp */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center justify-between">
-                    <span>Nomor WhatsApp / HP</span>
-                    <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80">
-                      Untuk Notifikasi Surat
-                    </span>
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="tel"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="Contoh: 081234567890"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 text-xs text-slate-800 font-medium font-mono"
-                    />
-                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-1">
+                    Tautan konfirmasi aktivasi akun akan dikirimkan ke Gmail ini.
+                  </span>
                 </div>
 
                 {/* Password Input */}
@@ -470,11 +435,11 @@ function RegisterForm() {
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Mendaftarkan Akun...</span>
+                      <span>Mendaftarkan & Mengirim Email...</span>
                     </>
                   ) : (
                     <>
-                      <span>Daftar Akun Warga</span>
+                      <span>Daftar & Kirim Email Verifikasi</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}

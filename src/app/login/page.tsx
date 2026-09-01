@@ -34,12 +34,15 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "";
-  const { loginWithSupabase, loginWithGoogle, user } = useAuth();
+  const { loginWithSupabase, loginWithGoogle, resendVerificationEmail, user } = useAuth();
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -66,6 +69,8 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setUnconfirmedEmail("");
+    setResendMessage("");
 
     const clean = identifier.trim();
     const isNik = /^[0-9]{16}$/.test(clean);
@@ -86,10 +91,26 @@ function LoginForm() {
 
     if (!res.success) {
       setError(res.error || "Gagal masuk. Silakan periksa kembali data Anda.");
+      if (res.emailNotConfirmed && res.email) {
+        setUnconfirmedEmail(res.email);
+      }
       setLoading(false);
     } else {
       setLoading(false);
       router.push(redirectPath || "/");
+    }
+  };
+
+  const handleResendFromLogin = async () => {
+    if (!unconfirmedEmail) return;
+    setResending(true);
+    setResendMessage("");
+    const res = await resendVerificationEmail(unconfirmedEmail);
+    setResending(false);
+    if (!res.success) {
+      setResendMessage(`Gagal: ${res.error}`);
+    } else {
+      setResendMessage("✓ Tautan aktivasi baru telah dikirimkan ke Gmail Anda. Silakan periksa kotak masuk/spam.");
     }
   };
 
@@ -151,9 +172,26 @@ function LoginForm() {
           </div>
 
           {error && (
-            <div className="p-3.5 bg-rose-50 text-rose-700 rounded-2xl border border-rose-200 text-xs font-medium flex items-center space-x-2.5 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-              <span>{error}</span>
+            <div className="p-3.5 bg-rose-50 text-rose-700 rounded-2xl border border-rose-200 text-xs font-medium flex flex-col space-y-2 animate-in fade-in">
+              <div className="flex items-start space-x-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+              {unconfirmedEmail && (
+                <div className="pt-1 border-t border-rose-200/60 flex flex-col space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={handleResendFromLogin}
+                    disabled={resending}
+                    className="self-start text-[11px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-lg transition disabled:opacity-60"
+                  >
+                    {resending ? "Mengirim Ulang..." : "Kirim Ulang Email Aktivasi ke Gmail"}
+                  </button>
+                  {resendMessage && (
+                    <span className="text-[11px] font-semibold text-emerald-900">{resendMessage}</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

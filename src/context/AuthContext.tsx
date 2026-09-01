@@ -20,21 +20,17 @@ export interface UserProfile {
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  loginWithSupabase: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithSupabase: (identifier: string, password: string) => Promise<{ success: boolean; error?: string; emailNotConfirmed?: boolean; email?: string }>;
   loginWithGoogle: (redirectPath?: string) => Promise<{ success: boolean; error?: string }>;
   registerWithSupabase: (data: {
-    nik?: string;
     email: string;
     password: string;
-    nama: string;
-    phone: string;
-    role: UserRole;
-    adminSecret?: string;
+    nama?: string;
+    nik?: string;
+    phone?: string;
+    role?: UserRole;
   }) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
-  verifyRegisterOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
-  resendRegisterOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
-  verifyRecoveryOtp: (email: string, token: string) => Promise<{ success: boolean; error?: string }>;
-  resendRecoveryOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resendVerificationEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (data: {
     nik: string;
     nama: string;
@@ -50,10 +46,7 @@ const AuthContext = createContext<AuthContextType>({
   loginWithSupabase: async () => ({ success: false }),
   loginWithGoogle: async () => ({ success: false }),
   registerWithSupabase: async () => ({ success: false }),
-  verifyRegisterOtp: async () => ({ success: false }),
-  resendRegisterOtp: async () => ({ success: false }),
-  verifyRecoveryOtp: async () => ({ success: false }),
-  resendRecoveryOtp: async () => ({ success: false }),
+  resendVerificationEmail: async () => ({ success: false }),
   updateProfile: async () => ({ success: false }),
   logout: async () => {},
   demoLogin: () => {},
@@ -92,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (profile.nama) name = profile.nama;
           if (profile.nik) nik = profile.nik;
           if (profile.no_hp) phone = profile.no_hp;
+          if (profile.avatar_url) avatar_url = profile.avatar_url;
         }
       }
     } catch (err) {
@@ -192,10 +186,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         let errorMsg = "Gagal masuk. Periksa kembali NIK/Email dan kata sandi Anda.";
-        if (error.message.includes("Invalid login credentials")) {
+        const isNotConfirmed = error.message.toLowerCase().includes("email not confirmed") || error.message.toLowerCase().includes("not confirmed");
+        
+        if (isNotConfirmed) {
+          errorMsg = "Alamat email Anda belum diverifikasi. Silakan periksa kotak masuk atau folder spam di Gmail Anda.";
+          return { success: false, error: errorMsg, emailNotConfirmed: true, email: targetEmail };
+        } else if (error.message.includes("Invalid login credentials")) {
           errorMsg = isNik ? "Kata sandi tidak cocok untuk NIK ini." : "Email atau kata sandi tidak cocok.";
-        } else if (error.message.includes("Email not confirmed")) {
-          errorMsg = "Alamat email belum dikonfirmasi.";
         }
         return { success: false, error: errorMsg };
       }
@@ -213,13 +210,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Secure Citizen Registration
+  // Secure Citizen Registration (Stage 1: Email & Password)
   const registerWithSupabase = async (data: {
-    nik?: string;
     email: string;
     password: string;
-    nama: string;
-    phone: string;
+    nama?: string;
+    nik?: string;
+    phone?: string;
+    role?: UserRole;
   }): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
     if (!supabase) {
       return { success: false, error: "Layanan autentikasi belum siap." };
@@ -256,36 +254,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const cleanEmail = data.email.trim().toLowerCase();
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const emailRedirectTo = `${origin}/auth/callback?redirect=/lengkapi-profil`;
+
+      const userMetadata: Record<string, any> = {
+        role: data.role || "warga",
+      };
+      if (data.nama) {
+        userMetadata.name = data.nama;
+        userMetadata.nama = data.nama;
+      }
+      if (cleanNik) {
+        userMetadata.nik = cleanNik;
+      }
+      if (data.phone) {
+        userMetadata.phone = data.phone;
+        userMetadata.no_hp = data.phone;
+      }
+
       const { data: authData, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: data.password,
         options: {
-          data: {
-            nik: cleanNik,
-            name: data.nama,
-            nama: data.nama,
-            phone: data.phone,
-            no_hp: data.phone,
-            role: "warga",
-          },
+          emailRedirectTo,
+          data: userMetadata,
         },
       });
 
       if (error) {
         let errorMsg = error.message;
-        if (error.message.includes("already registered")) {
-          errorMsg = "Email ini sudah terdaftar. Silakan lakukan Login.";
+        if (error.message.includes("already registered") || error.message.includes("already exists")) {
+          errorMsg = "Email ini sudah terdaftar. Silakan masuk ke akun Anda.";
         } else if (error.message.includes("Password should be at least")) {
           errorMsg = "Kata sandi minimal 8 karakter.";
         } else if (error.message.toLowerCase().includes("error sending confirmation email")) {
-          errorMsg = "Gagal mengirim email konfirmasi. Silakan periksa Custom SMTP di Supabase.";
+          errorMsg = "Gagal mengirim email konfirmasi. Pastikan Custom SMTP telah aktif di Supabase Dashboard.";
         } else if (error.message.toLowerCase().includes("rate limit") || error.message.toLowerCase().includes("exceeded")) {
-          errorMsg = "Batas pengiriman email Supabase tercapai. Silakan coba beberapa saat lagi.";
+          errorMsg = "Batas pengiriman email Supabase tercapai. Mohon tunggu beberapa saat lagi.";
         }
         return { success: false, error: errorMsg };
       }
 
-      // Upsert into profiles table
+      // Upsert initial profile into profiles table
       if (authData.user) {
         try {
           await supabase.from("profiles").upsert(
@@ -294,16 +304,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 id: authData.user.id,
                 nik: cleanNik || null,
                 email: cleanEmail,
-                nama: data.nama,
-                no_hp: data.phone,
-                role: "warga",
+                nama: data.nama || cleanEmail.split("@")[0] || "Warga Desa",
+                no_hp: data.phone || null,
+                role: data.role || "warga",
                 updated_at: new Date().toISOString(),
               },
             ],
             { onConflict: "id" }
           );
         } catch {
-          // Non-fatal if trigger handles insertion
+          // Non-fatal if trigger handles insertion or user is not logged in yet
         }
 
         const needsConfirmation = !authData.session;
@@ -313,8 +323,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: authData.user.id,
             nik: cleanNik,
             email: cleanEmail,
-            name: data.nama,
-            role: "warga",
+            name: data.nama || cleanEmail.split("@")[0] || "Warga Desa",
+            role: data.role || "warga",
             phone: data.phone,
             isProfileComplete: Boolean(cleanNik && cleanNik.length === 16 && data.phone && data.phone.length >= 9),
           };
@@ -332,12 +342,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Resend verification email
+  const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    if (!supabase) {
+      return { success: false, error: "Layanan autentikasi belum siap." };
+    }
+
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const emailRedirectTo = `${origin}/auth/callback?redirect=/lengkapi-profil`;
+
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: cleanEmail,
+        options: {
+          emailRedirectTo,
+        },
+      });
+
+      if (error) {
+        let msg = error.message;
+        if (msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("exceeded")) {
+          msg = "Batas frekuensi email tercapai. Silakan tunggu 1-2 menit sebelum meminta kirim ulang.";
+        }
+        return { success: false, error: msg };
+      }
+
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengirim email konfirmasi.";
+      return { success: false, error: msg };
+    }
+  };
+
   // Update profile for Google users & existing citizens
   const updateProfile = async (data: {
     nik: string;
     nama: string;
     phone: string;
-    alamat?: string;
   }) => {
     if (!supabase) {
       return { success: false, error: "Layanan database belum siap." };
@@ -369,7 +412,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      // 2. Upsert into profiles table with core compatible schema
+      // 2. Upsert into profiles table
       const basePayload: Record<string, any> = {
         id: currentUser.id,
         nik: cleanNik,
@@ -497,121 +540,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
-  // Verify 6-digit OTP code for registration
-  const verifyRegisterOtp = async (email: string, token: string) => {
-    if (!supabase) return { success: false, error: "Layanan database belum siap." };
-    try {
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanToken = token.trim();
-
-      // 1. Try verify with type: 'signup'
-      let { data, error } = await supabase.auth.verifyOtp({
-        email: cleanEmail,
-        token: cleanToken,
-        type: "signup",
-      });
-
-      // 2. Fallback to type: 'email' if signup type is rejected
-      if (error) {
-        const fallback = await supabase.auth.verifyOtp({
-          email: cleanEmail,
-          token: cleanToken,
-          type: "email",
-        });
-        if (!fallback.error && fallback.data) {
-          data = fallback.data;
-          error = null;
-        }
-      }
-
-      if (error) {
-        let msg = "Kode OTP tidak valid atau sudah kadaluarsa.";
-        if (error.message.toLowerCase().includes("token has expired") || error.message.toLowerCase().includes("expired")) {
-          msg = "Kode OTP sudah kadaluarsa. Silakan klik 'Kirim Ulang Kode OTP'.";
-        }
-        return { success: false, error: msg };
-      }
-
-      if (data?.user) {
-        const profile = await parseUserProfile(data.user);
-        setUser(profile);
-      }
-
-      return { success: true };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal memverifikasi kode OTP.";
-      return { success: false, error: msg };
-    }
-  };
-
-  // Resend 6-digit OTP code for registration
-  const resendRegisterOtp = async (email: string) => {
-    if (!supabase) return { success: false, error: "Layanan database belum siap." };
-    try {
-      const cleanEmail = email.trim().toLowerCase();
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: cleanEmail,
-      });
-      if (error) {
-        return { success: false, error: "Gagal mengirim ulang kode: " + error.message };
-      }
-      return { success: true };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal mengirim ulang kode OTP.";
-      return { success: false, error: msg };
-    }
-  };
-
-  // Verify 6-digit OTP code for password recovery
-  const verifyRecoveryOtp = async (email: string, token: string) => {
-    if (!supabase) return { success: false, error: "Layanan database belum siap." };
-    try {
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanToken = token.trim();
-
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: cleanEmail,
-        token: cleanToken,
-        type: "recovery",
-      });
-
-      if (error) {
-        let msg = "Kode OTP pemulihan tidak valid atau sudah kadaluarsa.";
-        if (error.message.toLowerCase().includes("expired")) {
-          msg = "Kode OTP sudah kadaluarsa. Silakan kirim ulang kode baru.";
-        }
-        return { success: false, error: msg };
-      }
-
-      if (data?.user) {
-        const profile = await parseUserProfile(data.user);
-        setUser(profile);
-      }
-
-      return { success: true };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal memverifikasi kode OTP.";
-      return { success: false, error: msg };
-    }
-  };
-
-  // Resend recovery email / OTP
-  const resendRecoveryOtp = async (email: string) => {
-    if (!supabase) return { success: false, error: "Layanan database belum siap." };
-    try {
-      const cleanEmail = email.trim().toLowerCase();
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
-      if (error) {
-        return { success: false, error: error.message };
-      }
-      return { success: true };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal mengirim ulang kode pemulihan.";
-      return { success: false, error: msg };
-    }
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -620,10 +548,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithSupabase,
         loginWithGoogle,
         registerWithSupabase,
-        verifyRegisterOtp,
-        resendRegisterOtp,
-        verifyRecoveryOtp,
-        resendRecoveryOtp,
+        resendVerificationEmail,
         updateProfile,
         logout,
         demoLogin,
