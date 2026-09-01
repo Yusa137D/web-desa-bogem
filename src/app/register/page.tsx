@@ -16,12 +16,12 @@ import {
   EyeOff,
   Loader2,
   CreditCard,
-  KeyRound,
+  MailCheck,
+  RefreshCw,
   LogIn,
-  ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
-import OtpCodeInput from "@/components/auth/OtpCodeInput";
+import { supabase } from "@/lib/supabase";
 
 function GoogleIcon() {
   return (
@@ -50,7 +50,7 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "";
-  const { registerWithSupabase, verifyRegisterOtp, resendRegisterOtp, loginWithGoogle, user } = useAuth();
+  const { registerWithSupabase, loginWithGoogle, user } = useAuth();
 
   const [nik, setNik] = useState("");
   const [nama, setNama] = useState("");
@@ -64,10 +64,11 @@ function RegisterForm() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
+  const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendStatus, setResendStatus] = useState("");
 
   // If already logged in, redirect safely
   useEffect(() => {
@@ -78,7 +79,7 @@ function RegisterForm() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (user && !otpSent) {
+    if (user && !emailConfirmationRequired) {
       if (user.role === "admin") {
         router.replace("/admin");
       } else if (user.isProfileComplete === false) {
@@ -87,7 +88,7 @@ function RegisterForm() {
         router.replace(redirectPath || "/");
       }
     }
-  }, [user, redirectPath, router, otpSent]);
+  }, [user, redirectPath, router, emailConfirmationRequired]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,31 +142,13 @@ function RegisterForm() {
       setError(res.error || "Gagal melakukan pendaftaran.");
     } else {
       if (res.needsEmailConfirmation) {
-        setOtpSent(true);
+        setEmailConfirmationRequired(true);
       } else {
         setSuccess(true);
         setTimeout(() => {
           router.push(redirectPath || "/");
         }, 1200);
       }
-    }
-  };
-
-  const handleVerifyOtp = async (code: string) => {
-    setError("");
-    setVerifyingOtp(true);
-
-    const res = await verifyRegisterOtp(email, code);
-
-    setVerifyingOtp(false);
-
-    if (!res.success) {
-      setError(res.error || "Kode OTP tidak valid.");
-    } else {
-      setSuccess(true);
-      setTimeout(() => {
-        router.push(redirectPath || "/layanan-surat");
-      }, 1200);
     }
   };
 
@@ -176,6 +159,28 @@ function RegisterForm() {
     if (!res.success) {
       setError(res.error || "Gagal mendaftar dengan akun Google.");
       setGoogleLoading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (!email) return;
+    setResending(true);
+    setResendStatus("");
+    try {
+      if (!supabase) return;
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim().toLowerCase(),
+      });
+      if (error) {
+        setResendStatus("Gagal mengirim ulang: " + error.message);
+      } else {
+        setResendStatus("✓ Email konfirmasi baru telah dikirimkan ke inbox Anda.");
+      }
+    } catch {
+      setResendStatus("Terjadi kesalahan jaringan.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -202,63 +207,54 @@ function RegisterForm() {
 
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
           
-          {/* SCREEN: OTP CODE VERIFICATION */}
-          {otpSent ? (
-            <div className="space-y-6 text-center animate-in zoom-in-95 duration-200 py-2">
+          {/* SCREEN: EMAIL CONFIRMATION SENT */}
+          {emailConfirmationRequired ? (
+            <div className="space-y-6 text-center animate-in zoom-in-95 duration-200 py-4">
               <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto border border-emerald-200 shadow-sm">
-                <KeyRound className="w-8 h-8 text-emerald-700" />
+                <MailCheck className="w-8 h-8 text-emerald-700" />
               </div>
 
               <div className="space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full inline-block border border-emerald-200">
-                  Verifikasi Akun
+                  Langkah Terakhir
                 </span>
                 <h2 className="text-xl font-bold text-slate-900">
-                  Masukkan Kode OTP 6-Digit
+                  Periksa Email Konfirmasi Anda
                 </h2>
                 <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-                  Kode verifikasi pendaftaran akun telah dikirim ke: <br />
+                  Tautan aktivasi akun telah dikirim ke: <br />
                   <strong className="text-slate-900 font-mono text-sm bg-slate-100 px-2 py-0.5 rounded inline-block mt-1">{email}</strong>
                 </p>
                 <p className="text-[11px] text-slate-500 max-w-xs mx-auto pt-1">
-                  Periksa inbox atau folder spam email Anda dan masukkan 6 digit angka di bawah ini.
+                  Silakan buka inbox atau folder spam email Anda dan klik tautan konfirmasi untuk mengaktifkan akun warga Anda.
                 </p>
               </div>
 
-              {success && (
-                <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  <span>Akun Anda berhasil diverifikasi! Mengalihkan ke layanan...</span>
+              {resendStatus && (
+                <div className={`p-3 rounded-xl text-xs font-semibold border ${
+                  resendStatus.startsWith("✓") ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+                }`}>
+                  {resendStatus}
                 </div>
               )}
 
-              {error && (
-                <div className="p-3 bg-rose-50 text-rose-700 rounded-2xl border border-rose-200 text-xs font-medium flex items-center space-x-2.5 animate-in fade-in">
-                  <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
+              <div className="space-y-3 pt-2">
+                <Link
+                  href={`/login${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`}
+                  className="w-full bg-[#004329] hover:bg-[#00321F] text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-md active:scale-95"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Buka Halaman Masuk</span>
+                </Link>
 
-              {/* 6-Digit OTP Box Component */}
-              <OtpCodeInput
-                email={email}
-                onComplete={handleVerifyOtp}
-                onResend={() => resendRegisterOtp(email)}
-                loading={verifyingOtp}
-                disabled={success}
-              />
-
-              <div className="pt-2 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => {
-                    setOtpSent(false);
-                    setError("");
-                  }}
-                  className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-slate-800 transition font-medium"
+                  onClick={handleResendEmail}
+                  disabled={resending}
+                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold py-2.5 px-4 rounded-xl border border-slate-200 transition flex items-center justify-center space-x-1.5 text-xs active:scale-95 disabled:opacity-60"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Ubah Data / Gunakan Email Lain</span>
+                  <RefreshCw className={`w-3.5 h-3.5 ${resending ? "animate-spin text-emerald-700" : ""}`} />
+                  <span>{resending ? "Mengirim Ulang..." : "Kirim Ulang Email Konfirmasi"}</span>
                 </button>
               </div>
             </div>
@@ -478,7 +474,7 @@ function RegisterForm() {
                     </>
                   ) : (
                     <>
-                      <span>Kirim Kode OTP Verifikasi</span>
+                      <span>Daftar Akun Warga</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
